@@ -36,11 +36,11 @@ The roles are used by their fully qualified name, for example `pepesan.kasm.kasm
 - **Collections:** `community.docker`, `community.general` and `ansible.posix` are installed automatically with this one.
 - **Third-party roles, which are NOT included** (a collection cannot depend on roles, so install them yourself):
 
-  | Role | Author | Used by |
-  |---|---|---|
-  | [`geerlingguy.docker`](https://github.com/geerlingguy/ansible-role-docker) | Jeff Geerling | `docker` |
-  | [`geerlingguy.swap`](https://github.com/geerlingguy/ansible-role-swap) | Jeff Geerling | `kasm` |
-  | [`geerlingguy.certbot`](https://github.com/geerlingguy/ansible-role-certbot) (>= 5.4.1) | Jeff Geerling | `kasm` |
+  | Role | Author | License | Used by |
+  |---|---|---|---|
+  | [`geerlingguy.docker`](https://github.com/geerlingguy/ansible-role-docker) | Jeff Geerling | MIT | `docker` |
+  | [`geerlingguy.swap`](https://github.com/geerlingguy/ansible-role-swap) | Jeff Geerling | MIT | `kasm` |
+  | [`geerlingguy.certbot`](https://github.com/geerlingguy/ansible-role-certbot) (>= 5.4.1) | Jeff Geerling | MIT | `kasm` |
 
   All the credit for those automations belongs to their author. This collection only uses them; it does not copy or
   modify their code. If one is missing, the role fails with a message that shows the command to install it.
@@ -130,4 +130,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE). The third-party roles listed above keep their own license.
+GPL-3.0-or-later. See [LICENSE](LICENSE). The third-party roles listed above are by Jeff Geerling and keep their own license (MIT). This
+collection does not copy or redistribute their code, it only uses them.

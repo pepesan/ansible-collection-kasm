@@ -6,8 +6,10 @@
 #      anything that looks like a real server address;
 #   2. the tarball installs, with its collection dependencies;
 #   3. the playbooks of the collection resolve by name and every role loads.
+#   4. galaxy-importer, the validator Galaxy runs on upload, accepts the tarball (warnings about modules
+#      of dependency collections are expected, errors are not).
 #
-# Usage: scripts/check-build.sh          (needs network: it downloads ansible-core,
+# Usage: scripts/check-build.sh          (needs network: it downloads ansible-core, galaxy-importer,
 #                                          the collection dependencies and the roles)
 # Exit status 0 means everything passed.
 set -uo pipefail
@@ -66,6 +68,21 @@ done
 roles_loaded="$("$V/ansible-playbook" -i localhost, "$NAMESPACE.$NAME.site_kasm" --list-tasks 2>&1 | grep -oE "$NAMESPACE\.$NAME\.[a-z_]+ :" | sort -u | wc -l)"
 echo "   roles that load in site_kasm: $roles_loaded"
 [ "$roles_loaded" -ge 4 ] || bad "fewer roles than expected load in site_kasm"
+
+echo "== Galaxy import preview (galaxy-importer, the validator Galaxy runs on upload)"
+"$V/pip" install -q galaxy-importer ansible-lint >/dev/null 2>&1 || bad "could not install galaxy-importer"
+if [ -x "$V/python" ]; then
+  # Without ANSIBLE_ROLES_PATH: otherwise the importer also lints the third-party roles installed for the checks above.
+  (cd "$W" && env -u ANSIBLE_ROLES_PATH "$V/python" -m galaxy_importer.main "$TARBALL") > "$W/importer.log" 2>&1
+  importer_rc=$?
+  # Warnings are expected: the importer lints the package alone, so it cannot resolve modules of the collections this one
+  # depends on (community.general, ansible.posix, community.docker). Errors are not.
+  echo "   exit status $importer_rc, $(grep -c '^WARNING' "$W/importer.log") warnings, $(grep -c '^ERROR' "$W/importer.log") errors"
+  if [ "$importer_rc" -ne 0 ] || grep -q '^ERROR' "$W/importer.log"; then
+    grep -E '^ERROR|Traceback|Error' "$W/importer.log" | head -10 | sed 's/^/     /'
+    bad "galaxy-importer reports errors: Galaxy would reject this tarball"
+  fi
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
