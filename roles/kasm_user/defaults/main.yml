@@ -7,7 +7,7 @@ kasm_user_username: ""
 # generated once and persisted per host and user so repeated runs reuse it;
 # pass kasm_user_password to set a fixed one. It is a different variable from
 # kasm_default_user_password (the built-in user@kasm.local, see kasm_credentials).
-kasm_user_credentials_dir: "{{ playbook_dir }}/.credentials"
+kasm_user_credentials_dir: "{{ lookup('ansible.builtin.env', 'PWD') | default(playbook_dir, true) }}/.credentials"
 kasm_user_password: >-
   {{ lookup('password', kasm_user_credentials_dir ~ '/' ~ inventory_hostname ~ '-kasm-user-'
   ~ (kasm_user_username | regex_replace('[^A-Za-z0-9._-]+', '-'))

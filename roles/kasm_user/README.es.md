@@ -37,7 +37,7 @@ existe ya un usuario con ese username, `delete_user` solo si existe.
 | `kasm_user_username` | — (obligatoria) | ej. `user@kasm.local` |
 | `kasm_user_state` | `present` | `present` crea si falta; `absent` borra si existe |
 | `kasm_user_password` | aleatoria (20 caracteres), persistida por host y usuario | Contraseña del usuario de Kasm que se crea. Pásela con `-e` para fijarla |
-| `kasm_user_credentials_dir` | `{{ playbook_dir }}/.credentials` | Dónde queda la contraseña generada: `<dir>/<host>-kasm-user-<usuario>.pass` (modo 600) |
+| `kasm_user_credentials_dir` | `<directorio actual>/.credentials` | Dónde queda la contraseña generada: `<dir>/<host>-kasm-user-<usuario>.pass` (modo 600) |
 | `kasm_user_first_name` / `_last_name` / `_organization` / `_phone` | `""` | Campos de perfil opcionales |
 | `kasm_user_locked` / `_disabled` | `false` | Flags de cuenta |
 | `kasm_url` | `https://127.0.0.1:443` | URL base de Kasm |

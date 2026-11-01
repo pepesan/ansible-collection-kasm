@@ -31,14 +31,14 @@ records the value actually in use, including a fixed one.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `kasm_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where generated password files live (keep in sync with `student_credentials_dir`) |
+| `kasm_credentials_dir` | `<current directory>/.credentials` | Where generated password files live (keep in sync with `student_credentials_dir`) |
 | `kasm_admin_password` / `kasm_default_user_password` | random, persisted | Override with `-e` to set fixed passwords |
 | `kasm_credentials_admin_user` / `_user_user` | `admin@kasm.local` / `user@kasm.local` | Usernames recorded in the CSV |
 | `kasm_credentials_student_name` | `{{ student_name | default("student") }}` | Name of the Linux user created by [`student`](../student/README.md); follows `student_name` automatically so the right password file is read |
 | `kasm_credentials_csv_prefix` | `access-data` | Prefix of the CSV file name (letters, digits, `.`, `_`, `-`). The repository `.gitignore` only covers `access-data-*` (and the old `datos-acceso-*`): add your pattern if you change it |
 | `kasm_credentials_csv_name` | `access-data-<inventory file name>.csv` | Exact CSV file name, derived from the inventory file of the run (`inventory_file`). No date: every run from the same inventory lands in the same file, and the name says which hosts it holds. Set to `""` to fall back to the day-of-run naming (below). Must be a plain `*.csv` name; the script rejects paths |
 | `kasm_training_project` | `""` | Only when `kasm_credentials_csv_name` is `""`: optional course prefix in `access-data[-<proyecto>]-<date of the run>.csv`; a new file each day |
-| `kasm_credentials_csv_dir` | `{{ playbook_dir }}` | Where the CSV is written |
+| `kasm_credentials_csv_dir` | `<current directory>` | Where the CSV is written (the directory `ansible-playbook` is run from, not the folder of the playbook) |
 
 Requires `kasm_domain` to be set by the caller (normally provided by
 `kasm`).

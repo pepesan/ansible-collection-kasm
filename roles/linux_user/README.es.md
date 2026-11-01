@@ -28,7 +28,7 @@ realmente idempotentes.
 | `linux_user_name` | — (obligatoria) | Username y nombre del grupo principal |
 | `linux_user_shell` | `/bin/bash` | Shell de login |
 | `linux_user_extra_groups` | `[]` | Grupos suplementarios, creados antes si faltan |
-| `linux_user_credentials_dir` | `{{ playbook_dir }}/.credentials` | Dónde viven los ficheros de password y sal |
+| `linux_user_credentials_dir` | `<directorio actual>/.credentials` | Dónde viven los ficheros de password y sal |
 | `linux_user_password_plain` | aleatoria, persistida | Sobreescribir con `-e` para fijar una contraseña concreta |
 | `linux_user_password_salt` | aleatoria, persistida | Raramente se sobreescribe directamente |
 
