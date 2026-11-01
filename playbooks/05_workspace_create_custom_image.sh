@@ -11,7 +11,7 @@ INVENTORY="${1:-inventory.example}"
 IMAGE="${2:?Usage: $0 <inventory> <image> <name>}"
 NAME="${3:?Usage: $0 <inventory> <image> <name>}"
 
-ansible-playbook -i "${INVENTORY}" kasm-workspace.yml \
+ansible-playbook -i "${INVENTORY}" pepesan.kasm.kasm_workspace \
   -e kasm_workspace_state=present \
   -e kasm_docker_image_name="${IMAGE}" \
   -e kasm_workspace_image="${IMAGE}" \

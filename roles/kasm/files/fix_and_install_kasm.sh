@@ -16,6 +16,11 @@ NC='\033[0m'
 
 # Redirect output to a log file (reachable from the host at /opt/kasm/data/opt/kasm_deploy.log)
 LOG_FILE="/opt/kasm_deploy.log"
+# Only root may read the log. umask covers a new file; the explicit chmod covers
+# a log left by an earlier run (tee keeps the mode of an existing file).
+umask 077
+: > "${LOG_FILE}"
+chmod 600 "${LOG_FILE}"
 exec 1> >(tee "${LOG_FILE}") 2>&1
 
 # Our own marker, written once install.sh finishes successfully (see bottom of
@@ -139,6 +144,7 @@ echo -e "${GREEN}==============================${NC}"
 echo ""
 echo -e "  URL:            ${GREEN}https://localhost:443${NC}"
 echo -e "  Admin user:     ${GREEN}admin@kasm.local${NC}"
-echo -e "  Admin password: ${GREEN}${ADMIN_PASSWORD}${NC}"
 echo -e "  User user:      ${GREEN}user@kasm.local${NC}"
-echo -e "  User password:  ${GREEN}${USER_PASSWORD}${NC}"
+# The passwords are deliberately NOT printed: this output ends up in a log file.
+# They are kept on the machine running Ansible (access CSV and .credentials/).
+echo -e "  Passwords:      not shown here (see the access CSV / .credentials/ on the Ansible control node)"

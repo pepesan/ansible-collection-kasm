@@ -33,7 +33,7 @@
   environment:
     STUDENT_PASSWORD: "{{ kasm_credentials_student_password }}"
     KASM_ADMIN_PASSWORD: "{{ kasm_admin_password }}"
-    KASM_USER_PASSWORD: "{{ kasm_user_password }}"
+    KASM_USER_PASSWORD: "{{ kasm_default_user_password }}"
   register: kasm_credentials_csv_update
   changed_when: "'CHANGED' in kasm_credentials_csv_update.stdout"
   no_log: true

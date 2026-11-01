@@ -30,13 +30,17 @@ second time.
 
 ## Example
 
+
+Remove Kasm and its data, keeping the Let's Encrypt certificate so that reinstalling does not spend one of the few
+certificates issued per name and week:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.kasm_uninstall
 ```
 
-To also force a brand new TLS certificate on the next install:
+**This deletes the Kasm data of the server.** To also force a brand new certificate on the next install:
 
 ```yaml
 - hosts: ubuntu
@@ -46,4 +50,12 @@ To also force a brand new TLS certificate on the next install:
         kasm_uninstall_remove_letsencrypt_certs: true
         node_name: kasmdemo
         kasm_base_domain: example.com
+```
+
+From the command line, with the playbook shipped in the collection (and then reinstall from scratch):
+
+```bash
+ansible-playbook -i inventory-my-server pepesan.kasm.kasm_uninstall 2>&1 | tee uninstall.log
+ansible-playbook -i inventory-my-server pepesan.kasm.site_kasm \
+  -e kasm_base_domain=kasm.example.com -e letsencrypt_email=you@example.com 2>&1 | tee install.log
 ```

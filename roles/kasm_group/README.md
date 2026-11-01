@@ -51,6 +51,9 @@ stays as its own task in [`kasm`](../kasm/README.md) instead of living here.
 
 ## Example
 
+
+Keep sessions of the `Instructors` group alive for a week and allow printing:
+
 ```yaml
 - hosts: ubuntu
   roles:
@@ -59,4 +62,31 @@ stays as its own task in [`kasm`](../kasm/README.md) instead of living here.
         kasm_group_name: "Instructors"
         kasm_group_keepalive_seconds: 604800
         kasm_group_allow_printing: true
+```
+
+Two policies in one play, a locked-down one for students and an open one for staff (each run only changes the settings
+whose value differs, so repeating it changes nothing):
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_group
+      vars:
+        kasm_group_name: "All Users"
+        kasm_group_keepalive_seconds: 3600
+        kasm_group_keepalive_action: delete       # free the resources of idle sessions
+    - role: pepesan.kasm.kasm_group
+      vars:
+        kasm_group_name: "Instructors"
+        kasm_group_allow_clipboard_down: true
+        kasm_group_allow_clipboard_up: true
+        kasm_group_allow_downloads: true
+        kasm_group_allow_uploads: true
+```
+
+Check what was applied (on the server, read-only):
+
+```bash
+docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm \
+  -c "SELECT g.name, gs.name, gs.value FROM group_settings gs JOIN groups g USING (group_id) ORDER BY 1,2;"
 ```

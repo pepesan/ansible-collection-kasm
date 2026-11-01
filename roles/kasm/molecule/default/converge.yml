@@ -7,4 +7,4 @@
         kasm_base_domain: molecule.example.com
         kasm_letsencrypt_enabled: false
         kasm_admin_password: "molecule-test-admin"
-        kasm_user_password: "molecule-test-user"
+        kasm_default_user_password: "molecule-test-user"

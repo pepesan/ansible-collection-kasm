@@ -9,5 +9,5 @@ set -e
 
 INVENTORY="${1:-inventory.example}"
 
-ansible-playbook -i "${INVENTORY}" site-kasm.yml \
+ansible-playbook -i "${INVENTORY}" pepesan.kasm.site_kasm \
   -e kasm_base_domain=example.com

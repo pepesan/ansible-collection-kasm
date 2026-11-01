@@ -6,16 +6,19 @@ kasm_credentials_dir: "{{ playbook_dir }}/.credentials"
 kasm_credentials_pass_prefix: "{{ kasm_credentials_dir }}/{{ inventory_hostname }}"
 
 # Random per-host passwords, generated once and re-read on later runs.
-# Override with -e kasm_admin_password=... / -e kasm_user_password=...
+# Override with -e kasm_admin_password=... / -e kasm_default_user_password=...
 kasm_admin_password: "{{ lookup('password', kasm_credentials_pass_prefix + '-kasm-admin.pass length=20 chars=ascii_letters,digits') }}"
-kasm_user_password: "{{ lookup('password', kasm_credentials_pass_prefix + '-kasm-user.pass length=20 chars=ascii_letters,digits') }}"
+kasm_default_user_password: "{{ lookup('password', kasm_credentials_pass_prefix + '-kasm-user.pass length=20 chars=ascii_letters,digits') }}"
 
-# Re-reads the same "student" password file student generates, only to
-# dump it into the access CSV alongside the Kasm credentials.
+# The student password to dump into the access CSV alongside the Kasm
+# credentials: the value the student role actually uses when it is in the play
+# (so a fixed -e student_password_plain=... is what ends up in the CSV), or the
+# password file that role generates otherwise.
 kasm_credentials_student_name: "{{ student_name | default('student') }}"
 kasm_credentials_student_password: >-
-  {{ lookup('password', kasm_credentials_pass_prefix ~ '-' ~ kasm_credentials_student_name
-     ~ '.pass length=20 chars=ascii_letters,digits') }}
+  {{ student_password_plain
+     | default(lookup('password', kasm_credentials_pass_prefix ~ '-' ~ kasm_credentials_student_name
+     ~ '.pass length=20 chars=ascii_letters,digits'), true) }}
 
 kasm_credentials_admin_user: "admin@kasm.local"
 kasm_credentials_user_user: "user@kasm.local"
@@ -34,6 +37,11 @@ kasm_training_project: ""
 # .gitignore): the repository ignores access-data-*.csv so credentials are not
 # committed by mistake.
 kasm_credentials_csv_prefix: access-data
-kasm_credentials_csv_name: "{{ kasm_credentials_csv_prefix }}-{{ inventory_file | default('inventory') | basename }}.csv"
+# Characters other than letters, digits, '.', '_' and '-' are replaced, so an
+# inline inventory ("-i 10.0.0.1,") or an unusual file name still gives a valid
+# CSV name instead of making the role fail.
+kasm_credentials_csv_name: >-
+  {{ kasm_credentials_csv_prefix }}-{{ inventory_file | default('inventory') | basename
+  | regex_replace('[^A-Za-z0-9._-]+', '-') | regex_replace('^-+|-+$', '') | default('inventory', true) }}.csv
 
 kasm_credentials_csv_dir: "{{ playbook_dir }}"

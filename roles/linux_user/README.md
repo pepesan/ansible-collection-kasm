@@ -33,11 +33,34 @@ the password itself (`linux_user_password_salt`, read via the same
 
 ## Example
 
+
+A CI user in the `docker` group, with a random password saved on your machine:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.linux_user
       vars:
-        linux_user_name: "ci-runner"
+        linux_user_name: ci-runner
         linux_user_extra_groups: [docker]
+```
+
+A service account that cannot log in interactively, with a password you provide:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.linux_user
+      vars:
+        linux_user_name: backup
+        linux_user_shell: /usr/sbin/nologin
+        linux_user_password_plain: "{{ vault_backup_password }}"
+```
+
+The groups in `linux_user_extra_groups` are created if they do not exist. Running it again changes nothing, and the
+password is not reset: the one saved in `.credentials/<host>-<user>.pass` is reused.
+
+```bash
+id ci-runner
+getent group docker
 ```

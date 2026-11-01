@@ -27,6 +27,10 @@ the [`kasm_workspace`](../kasm_workspace/README.md) registration first.
 
 ## Example
 
+
+Pull an image into Kasm's Docker ahead of time, so the first session does not wait for the download, and register it as a
+workspace:
+
 ```yaml
 - hosts: ubuntu
   roles:
@@ -39,4 +43,28 @@ the [`kasm_workspace`](../kasm_workspace/README.md) registration first.
         kasm_workspace_state: present
         kasm_workspace_image: "user/my-image:1.0"
         kasm_workspace_name: "My workspace"
+```
+
+With no name given, the default image is pulled: `pepesan/core-ubuntu-resolute:1.20`.
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - pepesan.kasm.kasm_docker_image
+```
+
+Remove an image. Delete the workspace and its sessions first, otherwise the role fails on purpose; removing never uses a
+default image, so the name is required:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_docker_image
+      vars:
+        kasm_docker_image_name: "user/my-image:1.0"
+        kasm_docker_image_state: absent
+```
+
+```bash
+docker exec kasm docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}'    # on the server
 ```

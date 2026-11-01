@@ -78,6 +78,18 @@ reinstalling a workspace but keeping users' home directories).
 
 ## Example
 
+
+The quickest one: no image given, so the default is used (`pepesan/core-ubuntu-resolute:1.20`, registered as "Core
+Ubuntu Resolute"). The image has to be in Kasm's Docker before the workspace is registered, hence
+[`kasm_docker_image`](../kasm_docker_image/README.md) first:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - pepesan.kasm.kasm_docker_image
+    - pepesan.kasm.kasm_workspace
+```
+
 ```yaml
 - hosts: ubuntu
   roles:

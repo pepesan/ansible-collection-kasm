@@ -1,5 +1,8 @@
 ---
 profile: production
+# Do not install requirements.yml into a .ansible/ folder inside the repository
+# (it would end up in the built tarball).
+offline: true
 exclude_paths:
   - .ansible/
   - .git/

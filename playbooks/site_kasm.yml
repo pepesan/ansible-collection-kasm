@@ -3,7 +3,7 @@
 # itself (TLS on by default), and per-group session settings.
 #
 # Usage:
-#   ansible-playbook -i <inventory> site-kasm.yml \
+#   ansible-playbook -i <inventory> pepesan.kasm.site_kasm \
 #     -e kasm_base_domain=example.com
 #
 # See the companion shell scripts in this directory for concrete examples
