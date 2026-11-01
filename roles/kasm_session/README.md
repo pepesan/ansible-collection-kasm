@@ -22,6 +22,7 @@ at least one workspace must have been registered on that host first.
 | `kasm_session_user` | `user@kasm.local` | Kasm username owning the session. Must already exist |
 | `kasm_session_workspace` | `""` (required) | An already registered workspace, by its image `name` (`pepesan/mi-ubuntu-resolute-kasm-python-dind:1.3`) or `friendly_name` (`Python Docker (Ubuntu 26.04)`) |
 | `kasm_session_timeout_seconds` | `600` | How long to wait for `running` (a cold start of a large image can take minutes) |
+| `kasm_session_launch_retries` / `kasm_session_launch_delay` | `6` / `10` | Attempts and seconds between them when Kasm refuses the session request for a moment |
 | `kasm_session_poll_seconds` | `5` | Polling interval while waiting |
 | `kasm_session_api_key_file` | `{{ kasm_dir }}/.kasm_api_key.json` | Persistent API key bootstrapped by `kasm_workspace` |
 

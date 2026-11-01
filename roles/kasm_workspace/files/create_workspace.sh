@@ -61,10 +61,21 @@ AUTOSTART_ENABLED="${KASM_AUTOSTART_ENABLED:-false}"
 AUTOSTART_USER="${KASM_AUTOSTART_USER:-user@kasm.local}"
 AUTOSTART_TIMEOUT_SECONDS="${KASM_AUTOSTART_TIMEOUT_SECONDS:-600}"
 
-echo ">> Waiting for the Kasm service at ${KASM_URL}..."
+# This script runs on the host and talks to Kasm with curl. Minimal images
+# (for example Debian cloud images) do not ship it: fail at once with a clear
+# message instead of waiting forever.
+command -v curl >/dev/null 2>&1 || { echo "ERR curl is not installed on this host (install it, e.g. apt-get install curl)" >&2; exit 1; }
+
+echo ">> Waiting for the Kasm service at ${KASM_URL} (max ${KASM_WAIT_SECONDS:-300}s)..."
+WAITED=0
 until curl -sk --fail "${KASM_URL}" -o /dev/null; do
+  if [ "$WAITED" -ge "${KASM_WAIT_SECONDS:-300}" ]; then
+    echo "ERR Kasm did not answer at ${KASM_URL} after ${WAITED}s" >&2
+    exit 1
+  fi
   echo "Waiting for Kasm..."
   sleep 5
+  WAITED=$((WAITED + 5))
 done
 echo ">> Kasm is ready. Proceeding..."
 

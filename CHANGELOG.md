@@ -15,6 +15,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Passwords, the access CSV and the API key copy are written in the directory `ansible-playbook` is run from, not in the folder of
   the playbook. Run by name from the installed collection, a playbook's folder is inside the collection, where the credentials
   would be lost (and regenerated differently) on an upgrade. The CSV helper script is run from the role and is no longer copied.
+- Supported servers: Ubuntu 24.04 and 26.04, Debian 12 and 13. The `kasm` role installs `curl` (the workspace script needs it on the host and minimal Debian images lack it) and only sets the AppArmor user-namespace sysctl on kernels that have it (Ubuntu).
 - Default workspace image `pepesan/core-ubuntu-resolute:1.20` (only when creating; deleting never defaults).
 - Example playbooks and scripts under `playbooks/`.
 - `requirements.yml` with the third-party roles by Jeff Geerling

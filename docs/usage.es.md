@@ -10,7 +10,7 @@ copiar.
 
 ## 1. Antes de empezar
 
-**Nodo de control** (su máquina): `ansible-core` 2.15+ y acceso SSH como `root` al servidor (Ubuntu). Instale una sola vez la
+**Nodo de control** (su máquina): `ansible-core` 2.15+ y acceso SSH como `root` al servidor (Ubuntu 24.04/26.04 o Debian 12/13). Instale una sola vez la
 colección y los roles de terceros (ver el [README](../README.es.md#instalación)).
 
 **Inventario.** Un host por servidor Kasm. `node_name` decide el nombre DNS: el servidor se alcanza en

@@ -8,7 +8,12 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
-        - all
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
 
 # geerlingguy.swap and geerlingguy.certbot are third-party roles. A collection
 # cannot declare role dependencies (Galaxy would not install them), so they

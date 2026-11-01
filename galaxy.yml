@@ -18,6 +18,7 @@ tags:
   - docker
   - letsencrypt
   - ubuntu
+  - debian
 dependencies:
   community.docker: ">=3.10.0"
   community.general: ">=8.0.0"

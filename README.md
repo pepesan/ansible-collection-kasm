@@ -2,11 +2,11 @@
 
 [Español](https://github.com/pepesan/ansible-collection-kasm/blob/main/README.es.md)
 
-Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/) on Ubuntu servers: Docker, a
+Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/) on Ubuntu and Debian servers: Docker, a
 Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
 clean uninstall. Every step is idempotent: running it again changes nothing.
 
-> **Status: pre-release (0.0.1).** Tested end to end on a clean Ubuntu 26.04 server with Kasm 1.19.0. Not published
+> **Status: pre-release (0.0.1).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0. Not published
 > on Ansible Galaxy yet, so the `ansible-galaxy` commands below work once it is.
 > This is an independent project, not affiliated with or endorsed by Kasm Technologies.
 
@@ -31,7 +31,7 @@ The roles are used by their fully qualified name, for example `pepesan.kasm.kasm
 ## Requirements
 
 - **Control node:** `ansible-core` 2.15 or newer and SSH access as `root` to the server.
-- **Server:** Ubuntu (tested on 26.04), with ports 80 and 443 free. For a real certificate,
+- **Server:** Ubuntu 24.04 or 26.04, or Debian 12 or 13 (all tested), with ports 80 and 443 free. For a real certificate,
   `<node_name>.<kasm_base_domain>` must already resolve to the server.
 - **Collections:** `community.docker`, `community.general` and `ansible.posix` are installed automatically with this one.
 - **Third-party roles, which are NOT included** (a collection cannot depend on roles, so install them yourself):
@@ -118,7 +118,7 @@ The CSV is `access-data-<inventory file name>.csv` in the directory you run from
   and `kasm_credentials`. Roles that touch the host kernel are refused by the script on purpose.
 - The roles that talk to a live Kasm (`kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user`, `kasm_docker_image`) cannot
   run in an isolated container, so they are verified end to end against a real server instead.
-- End-to-end on a clean Ubuntu 26.04 server: full install, repeat (no changes), workspace, session.
+- End-to-end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers: full install, repeat (no changes), workspace, session, user, uninstall and reinstall.
 
 See [CONTRIBUTING.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/CONTRIBUTING.md).
 

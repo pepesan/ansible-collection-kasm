@@ -2,11 +2,11 @@
 
 [English](README.md)
 
-Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmweb.com/) en servidores Ubuntu: Docker, un
+Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmweb.com/) en servidores Ubuntu y Debian: Docker, un
 usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo, workspaces, usuarios, sesiones y una
 desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
 
-> **Estado: preversión (0.0.1).** Probada de extremo a extremo en un servidor Ubuntu 26.04 limpio con Kasm 1.19.0. Aún no
+> **Estado: preversión (0.0.1).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0. Aún no
 > está publicada en Ansible Galaxy, así que los comandos `ansible-galaxy` de abajo funcionarán cuando lo esté.
 > Es un proyecto independiente, sin relación con Kasm Technologies ni respaldado por ella.
 
@@ -31,7 +31,7 @@ Los roles se usan por su nombre completo, por ejemplo `pepesan.kasm.kasm_workspa
 ## Requisitos
 
 - **Nodo de control:** `ansible-core` 2.15 o superior y acceso SSH como `root` al servidor.
-- **Servidor:** Ubuntu (probado en 26.04), con los puertos 80 y 443 libres. Para un certificado real,
+- **Servidor:** Ubuntu 24.04 o 26.04, o Debian 12 o 13 (todos probados), con los puertos 80 y 443 libres. Para un certificado real,
   `<node_name>.<kasm_base_domain>` debe resolver ya al servidor.
 - **Colecciones:** `community.docker`, `community.general` y `ansible.posix` se instalan solas con esta.
 - **Roles de terceros, que NO se incluyen** (una colección no puede depender de roles, así que hay que instalarlos aparte):
@@ -118,7 +118,7 @@ suba nunca a un repositorio el CSV, `.credentials/` ni su inventario**: la IP de
   y `kasm_credentials`. El script rechaza a propósito los roles que tocan el kernel del anfitrión.
 - Los roles que hablan con un Kasm vivo (`kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user`, `kasm_docker_image`) no
   se pueden ejecutar en un contenedor aislado, así que se verifican de extremo a extremo contra un servidor real.
-- Extremo a extremo en un servidor Ubuntu 26.04 limpio: instalación completa, repetición (sin cambios), workspace, sesión.
+- Extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13: instalación completa, repetición (sin cambios), workspace, sesión, usuario, desinstalación y reinstalación.
 
 Ver [CONTRIBUTING.es.md](CONTRIBUTING.es.md).
 
