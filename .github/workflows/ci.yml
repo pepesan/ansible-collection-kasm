@@ -1,0 +1,73 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 ansible-lint==26.10.1 yamllint==1.38.0
+      - name: Install the collections and the third-party roles
+        run: |
+          ansible-galaxy collection install -r requirements.yml
+          ansible-galaxy role install -r requirements.yml
+      - name: ansible-lint
+        run: ansible-lint
+      - name: yamllint
+        run: yamllint .
+
+  build:
+    name: Build and documentation examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 pyyaml
+      - name: Tarball content, clean install and playbooks by name
+        run: scripts/check-build.sh
+      - name: Every YAML play in the documentation
+        run: scripts/check-examples.sh
+
+  molecule:
+    name: Molecule (${{ matrix.role }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only the roles that are safe to run in a container: the others change
+        # the kernel of the machine or need a live Kasm (see CONTRIBUTING.md).
+        role: [linux_user, student, kasm_credentials]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 molecule==26.10.0 molecule-plugins[docker] pyyaml
+      - name: Install the collections
+        run: ansible-galaxy collection install -r requirements.yml
+      - name: Molecule
+        run: scripts/molecule.sh ${{ matrix.role }} test

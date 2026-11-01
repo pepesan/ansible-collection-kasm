@@ -1,0 +1,52 @@
+---
+name: Release
+
+# Publishes the collection on Ansible Galaxy when a version tag is pushed
+# (for example v0.0.1). It needs the GALAXY_API_KEY secret of the repository.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # to create the GitHub release
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 pyyaml
+
+      - name: The tag must match the version in galaxy.yml
+        run: |
+          version="$(python3 -c "import yaml; print(yaml.safe_load(open('galaxy.yml'))['version'])")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match galaxy.yml version ${version}" >&2
+            exit 1
+          fi
+
+      - name: Check the tarball (content, clean install, playbooks by name)
+        run: scripts/check-build.sh
+
+      - name: Build
+        run: ansible-galaxy collection build --output-path dist
+
+      - name: Publish on Ansible Galaxy
+        env:
+          GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
+        run: |
+          if [ -z "${GALAXY_API_KEY}" ]; then
+            echo "The GALAXY_API_KEY secret is not set in the repository" >&2
+            exit 1
+          fi
+          ansible-galaxy collection publish dist/*.tar.gz --token "${GALAXY_API_KEY}"
+
+      - name: GitHub release with the tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz --title "${GITHUB_REF_NAME}" --generate-notes
