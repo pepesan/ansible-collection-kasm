@@ -14,7 +14,7 @@ de `linux_user` para el detalle de contraseña/idempotencia.
 | `student_name` | `student` | Usuario/grupo creado |
 | `student_shell` | `/bin/bash` | Shell de login |
 | `student_extra_groups` | `[docker, sudo]` | Grupos suplementarios |
-| `student_credentials_dir` | `{{ playbook_dir }}/.credentials` | Dónde vive el fichero de la contraseña generada |
+| `student_credentials_dir` | `<directorio actual>/.credentials` | Dónde vive el fichero de la contraseña generada |
 | `student_password_plain` | aleatoria, persistida | Sobreescribir con `-e` para fijar una contraseña concreta |
 
 La ruta del fichero de contraseña (`<credentials_dir>/<inventory_hostname>-student.pass`)

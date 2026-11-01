@@ -14,7 +14,7 @@ role — fixes the username and default groups, nothing else; see
 | `student_name` | `student` | Username/group created |
 | `student_shell` | `/bin/bash` | Login shell |
 | `student_extra_groups` | `[docker, sudo]` | Supplementary groups |
-| `student_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where the generated password file lives |
+| `student_credentials_dir` | `<current directory>/.credentials` | Where the generated password file lives |
 | `student_password_plain` | random, persisted | Override with `-e` to set a fixed password |
 
 The password file path (`<credentials_dir>/<inventory_hostname>-student.pass`)

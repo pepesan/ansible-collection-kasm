@@ -32,14 +32,14 @@ posteriores. El CSV recoge el valor realmente en uso, también cuando es fijo.
 
 | Variable | Valor por defecto | Propósito |
 |---|---|---|
-| `kasm_credentials_dir` | `{{ playbook_dir }}/.credentials` | Dónde viven los ficheros de contraseña generados (mantener sincronizado con `student_credentials_dir`) |
+| `kasm_credentials_dir` | `<directorio actual>/.credentials` | Dónde viven los ficheros de contraseña generados (mantener sincronizado con `student_credentials_dir`) |
 | `kasm_admin_password` / `kasm_default_user_password` | aleatoria, persistida | Sobreescribir con `-e` para fijar contraseñas concretas |
 | `kasm_credentials_admin_user` / `_user_user` | `admin@kasm.local` / `user@kasm.local` | Usuarios registrados en el CSV |
 | `kasm_credentials_student_name` | `{{ student_name | default("student") }}` | Nombre del usuario Linux creado por [`student`](../student/README.es.md); sigue a `student_name` automáticamente para leer el fichero de contraseña correcto |
 | `kasm_credentials_csv_prefix` | `access-data` | Prefijo del nombre del CSV (letras, dígitos, `.`, `_`, `-`). El `.gitignore` del repositorio solo cubre `access-data-*` (y el antiguo `datos-acceso-*`): añada su patrón si lo cambia |
 | `kasm_credentials_csv_name` | `access-data-<nombre del fichero de inventario>.csv` | Nombre exacto del CSV, derivado del fichero de inventario de la ejecución (`inventory_file`). Sin fecha: todas las ejecuciones del mismo inventario caen en el mismo fichero y el nombre indica qué hosts contiene. Poner `""` para usar la fecha del día de ejecución (abajo). Debe ser un nombre `*.csv` simple; el script rechaza rutas |
 | `kasm_training_project` | `""` | Solo cuando `kasm_credentials_csv_name` es `""`: prefijo de curso opcional en `access-data[-<proyecto>]-<fecha de ejecución>.csv`; un fichero nuevo cada día |
-| `kasm_credentials_csv_dir` | `{{ playbook_dir }}` | Dónde se escribe el CSV |
+| `kasm_credentials_csv_dir` | `<directorio actual>` | Dónde se escribe el CSV (el directorio desde el que se ejecuta `ansible-playbook`, no la carpeta del playbook) |
 
 Requiere que quien llame al rol fije `kasm_domain` (normalmente lo aporta
 `kasm`).

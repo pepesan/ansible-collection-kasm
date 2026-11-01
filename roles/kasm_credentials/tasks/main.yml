@@ -8,19 +8,10 @@
   become: false
   run_once: true
 
-- name: Copy the CSV updater script to the control node
-  ansible.builtin.copy:
-    src: update_credentials_csv.py
-    dest: "{{ kasm_credentials_csv_dir }}/update_credentials_csv.py"
-    mode: "0755"
-  delegate_to: localhost
-  become: false
-  run_once: true
-
 - name: Record this node's credentials in the access CSV (access-data-<inventory>.csv)
   ansible.builtin.command: >
-    python3 {{ kasm_credentials_csv_dir }}/update_credentials_csv.py
-    --csv-dir {{ kasm_credentials_csv_dir }}
+    python3 {{ (role_path ~ '/files/update_credentials_csv.py') | quote }}
+    --csv-dir {{ kasm_credentials_csv_dir | quote }}
     --ip {{ inventory_hostname }}
     --kasm-url https://{{ kasm_domain }}
     --kasm-admin-user {{ kasm_credentials_admin_user }}

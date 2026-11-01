@@ -27,7 +27,7 @@ the password itself (`linux_user_password_salt`, read via the same
 | `linux_user_name` | — (required) | Username and primary group name |
 | `linux_user_shell` | `/bin/bash` | Login shell |
 | `linux_user_extra_groups` | `[]` | Supplementary groups, created first if missing |
-| `linux_user_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where the password and salt files live |
+| `linux_user_credentials_dir` | `<current directory>/.credentials` | Where the password and salt files live |
 | `linux_user_password_plain` | random, persisted | Override with `-e` to set a fixed password |
 | `linux_user_password_salt` | random, persisted | Rarely overridden directly |
 

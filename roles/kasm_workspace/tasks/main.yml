@@ -74,7 +74,7 @@
     - name: Save a local copy of Kasm's API key
       ansible.builtin.copy:
         content: "{{ kasm_workspace_api_key_remote_content.content | b64decode }}"
-        dest: "{{ playbook_dir }}/kasm-api-key-{{ inventory_hostname }}.json"
+        dest: "{{ (lookup('ansible.builtin.env', 'PWD') | default(playbook_dir, true)) }}/kasm-api-key-{{ inventory_hostname }}.json"
         mode: "0600"
       delegate_to: localhost
       become: false
