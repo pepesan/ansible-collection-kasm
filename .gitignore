@@ -1,0 +1,17 @@
+PLAN.md
+CLAUDE.md
+AGENTS.md
+.credenciales/
+datos-acceso-*.csv
+.datos-acceso*.lock
+kasm-api-key-*.json
+inventory-*
+!playbooks/inventory.example
+*.log
+*.tar.gz
+__pycache__/
+*.pyc
+.idea
+.venv
+.molecule/
+.ansible/

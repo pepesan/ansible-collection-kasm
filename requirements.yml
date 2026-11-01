@@ -1,0 +1,25 @@
+---
+# Requirements of the pepesan.kasm collection (install the collection first:
+#   ansible-galaxy collection install pepesan.kasm). Then:
+#
+#   ansible-galaxy install -r requirements.yml              # third-party roles
+#   ansible-galaxy collection install -r requirements.yml   # collection dependencies
+#
+# The roles below are by Jeff Geerling (geerlingguy) and are NOT shipped with
+# pepesan.kasm: a collection cannot depend on roles, so they must be installed
+# separately. Credit for those automations belongs to their author.
+roles:
+  - name: geerlingguy.docker  # https://github.com/geerlingguy/ansible-role-docker
+    version: "8.0.0"
+  - name: geerlingguy.swap  # https://github.com/geerlingguy/ansible-role-swap
+    version: "2.2.0"
+  - name: geerlingguy.certbot  # https://github.com/geerlingguy/ansible-role-certbot
+    version: "5.5.0"  # >= 5.4.1 required: 5.2.0 has a bug with recent ansible-core
+
+collections:
+  - name: community.docker
+    version: ">=3.10.0"
+  - name: community.general
+    version: ">=8.0.0"
+  - name: ansible.posix
+    version: ">=1.5.0"

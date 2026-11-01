@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: kasm
+  description: Installs Kasm Workspaces (no workspace registered yet) with optional real TLS
+  author: pepesan
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+
+# geerlingguy.swap and geerlingguy.certbot are third-party roles. A collection
+# cannot declare role dependencies (Galaxy would not install them), so they
+# are included from tasks/main.yml with include_role and must be installed by
+# the user: ansible-galaxy role install -r requirements.yml
+# They are NOT shipped with this collection (author: Jeff Geerling).
+#
+# Variables are passed explicitly as include_role vars, with a kasm_ prefix on
+# our side: mapping a variable to a parameter of the SAME name
+# ("swap_file_size_mb: {{ swap_file_size_mb }}") creates a self-referencing
+# Jinja loop ("Recursive loop detected in template").
+dependencies: []
