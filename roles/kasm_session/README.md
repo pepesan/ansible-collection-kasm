@@ -14,6 +14,14 @@ access, same approach as `kasm_user`. It authenticates with the persistent API
 key `kasm_workspace` creates on the host (`/opt/kasm/.kasm_api_key.json`), so
 at least one workspace must have been registered on that host first.
 
+## Tests
+
+`scripts/molecule.sh kasm_session` runs a Molecule scenario against a small fake of Kasm's public API
+(`molecule/default/mock_kasm_api.py`): no real Kasm, no containers, safe on a workstation. It checks launching and
+waiting for a session, idempotency (counting the calls really sent), lookup by name and `friendly_name`, `state: absent`,
+and the error cases (unknown user, unregistered or ambiguous workspace, missing API key, session limit). It tests the
+role's logic against the API as the role understands it; the real API is covered by the end-to-end run on a real server.
+
 ## Variables
 
 | Variable | Default | Purpose |
