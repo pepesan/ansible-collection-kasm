@@ -1,6 +1,6 @@
 # pepesan.kasm
 
-[Español](README.es.md)
+[Español](https://github.com/pepesan/ansible-collection-kasm/blob/main/README.es.md)
 
 Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/) on Ubuntu servers: Docker, a
 Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
@@ -14,17 +14,17 @@ clean uninstall. Every step is idempotent: running it again changes nothing.
 
 | Role | What it does |
 |---|---|
-| [`docker`](roles/docker/README.md) | Docker Engine and the kernel tuning Kasm needs |
-| [`student`](roles/student/README.md) | The `student` Linux user (`docker` and `sudo` groups) with a random password |
-| [`linux_user`](roles/linux_user/README.md) | Generic Linux user with a persisted random password (`student` is a thin wrapper) |
-| [`kasm_credentials`](roles/kasm_credentials/README.md) | Random Kasm passwords and the access CSV (one row per server) |
-| [`kasm`](roles/kasm/README.md) | Installs Kasm Workspaces, with TLS from Let's Encrypt by default |
-| [`kasm_group`](roles/kasm_group/README.md) | Session policy and hardening of a Kasm group (keepalive, clipboard, downloads...) |
-| [`kasm_docker_image`](roles/kasm_docker_image/README.md) | Pulls or removes an image inside Kasm's Docker |
-| [`kasm_workspace`](roles/kasm_workspace/README.md) | Registers or deletes a workspace (default image: a small Ubuntu 26.04 desktop) |
-| [`kasm_user`](roles/kasm_user/README.md) | Creates or deletes a Kasm user through the public API |
-| [`kasm_session`](roles/kasm_session/README.md) | Starts or destroys a user's session of a workspace |
-| [`kasm_uninstall`](roles/kasm_uninstall/README.md) | Removes Kasm for a clean reinstall |
+| [`docker`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/docker/README.md) | Docker Engine and the kernel tuning Kasm needs |
+| [`student`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/student/README.md) | The `student` Linux user (`docker` and `sudo` groups) with a random password |
+| [`linux_user`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/linux_user/README.md) | Generic Linux user with a persisted random password (`student` is a thin wrapper) |
+| [`kasm_credentials`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_credentials/README.md) | Random Kasm passwords and the access CSV (one row per server) |
+| [`kasm`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm/README.md) | Installs Kasm Workspaces, with TLS from Let's Encrypt by default |
+| [`kasm_group`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_group/README.md) | Session policy and hardening of a Kasm group (keepalive, clipboard, downloads...) |
+| [`kasm_docker_image`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_docker_image/README.md) | Pulls or removes an image inside Kasm's Docker |
+| [`kasm_workspace`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_workspace/README.md) | Registers or deletes a workspace (default image: a small Ubuntu 26.04 desktop) |
+| [`kasm_user`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_user/README.md) | Creates or deletes a Kasm user through the public API |
+| [`kasm_session`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_session/README.md) | Starts or destroys a user's session of a workspace |
+| [`kasm_uninstall`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_uninstall/README.md) | Removes Kasm for a clean reinstall |
 
 The roles are used by their fully qualified name, for example `pepesan.kasm.kasm_workspace`.
 
@@ -93,7 +93,7 @@ The four playbooks of the collection can be run by name: `pepesan.kasm.site_kasm
 `pepesan.kasm.kasm_session` and `pepesan.kasm.kasm_uninstall`. The first install takes several minutes (the slow part is
 Kasm's own installer); sending the output to a log with `tee` lets you follow it with `tail -f`.
 
-The full guide, with every variable and the troubleshooting table, is in [docs/usage.md](docs/usage.md).
+The full guide, with every variable and the troubleshooting table, is in [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
 
 ## Passwords
 
@@ -109,7 +109,7 @@ later runs. They are kept on the machine that runs Ansible, never on a repositor
 
 The CSV is `access-data-<inventory file name>.csv` in the directory you run from (mode 600). **Never commit the CSV,
 `.credentials/` or your inventory**: the server IP is a secret too. Details in
-[`kasm_credentials`](roles/kasm_credentials/README.md).
+[`kasm_credentials`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_credentials/README.md).
 
 ## Testing
 
@@ -120,7 +120,7 @@ The CSV is `access-data-<inventory file name>.csv` in the directory you run from
   run in an isolated container, so they are verified end to end against a real server instead.
 - End-to-end on a clean Ubuntu 26.04 server: full install, repeat (no changes), workspace, session.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/CONTRIBUTING.md).
 
 ## Related repositories
 
@@ -130,5 +130,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE). The third-party roles listed above are by Jeff Geerling and keep their own license (MIT). This
+GPL-3.0-or-later. See [LICENSE](https://github.com/pepesan/ansible-collection-kasm/blob/main/LICENSE). The third-party roles listed above are by Jeff Geerling and keep their own license (MIT). This
 collection does not copy or redistribute their code, it only uses them.
