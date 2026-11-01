@@ -3,9 +3,14 @@ name: Release
 
 # Publishes the collection on Ansible Galaxy when a version tag is pushed
 # (for example v0.0.1). It needs the GALAXY_API_KEY secret of the repository.
+#
+# It can also be started by hand ("Run workflow", or `gh workflow run release.yml`) as a DRY RUN: it
+# builds and checks everything exactly as for a release but does not publish and does not create
+# the GitHub release, because that only happens when the run was started by a tag.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write   # to create the GitHub release
@@ -23,6 +28,7 @@ jobs:
         run: pip install ansible-core==2.21.5 pyyaml
 
       - name: The tag must match the version in galaxy.yml
+        if: github.ref_type == 'tag'
         run: |
           version="$(python3 -c "import yaml; print(yaml.safe_load(open('galaxy.yml'))['version'])")"
           if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
@@ -37,6 +43,7 @@ jobs:
         run: ansible-galaxy collection build --output-path dist
 
       - name: Publish on Ansible Galaxy
+        if: github.ref_type == 'tag'
         env:
           GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
         run: |
@@ -46,7 +53,14 @@ jobs:
           fi
           ansible-galaxy collection publish dist/*.tar.gz --token "${GALAXY_API_KEY}"
 
+      - name: Dry run summary (nothing was published)
+        if: github.ref_type != 'tag'
+        run: |
+          echo "Dry run on ${GITHUB_REF_NAME}: tarball built and checked, NOT published."
+          ls -l dist/
+
       - name: GitHub release with the tarball
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz --title "${GITHUB_REF_NAME}" --generate-notes
