@@ -1,0 +1,67 @@
+---
+# Order matters here, which is why geerlingguy.docker is included from this
+# file instead of being a meta dependency (dependencies always run BEFORE the
+# role's own tasks):
+#
+#   1. prefer IPv4 over IPv6 in glibc's address selection, so a broken IPv6
+#      route on the host cannot stall the apt installs of step 2;
+#   2. geerlingguy.docker installs Docker Engine and the Compose plugin,
+#      manages the service and adds users to the docker group;
+#   3. the kernel modules and sysctl values Kasm's container networking needs,
+#      which that role does not cover.
+
+# Makes getaddrinfo(3) rank IPv4-mapped addresses above native IPv6 when a
+# name resolves to both. It does NOT disable IPv6 (an IPv6-only destination
+# keeps working). Only programs that resolve through glibc are affected (apt,
+# curl, git, python...): Go binaries such as dockerd have their own resolver
+# and ignore gai.conf, and containers have their own /etc/gai.conf.
+- name: Prefer IPv4 over IPv6 in glibc address selection
+  ansible.builtin.lineinfile:
+    path: "{{ docker_prefer_ipv4_gai_conf }}"
+    # Anchored on the *uncommented* directive: the stock gai.conf ships it
+    # commented out with '#', so on a fresh host this appends one line and on
+    # later runs it matches (and rewrites in place) that same line.
+    regexp: '^\s*precedence\s+::ffff:0:0/96'
+    line: "precedence ::ffff:0:0/96  {{ docker_prefer_ipv4_precedence }}"
+    state: present
+    create: true
+    mode: "0644"
+  when: docker_prefer_ipv4 | bool
+
+# geerlingguy.docker is a third-party role by Jeff Geerling, not shipped with
+# this collection: install it with
+#   ansible-galaxy role install -r requirements.yml
+- name: Install Docker Engine and the Compose plugin (geerlingguy.docker)
+  block:
+    - name: Run geerlingguy.docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+  rescue:
+    - name: Explain how to install the required third-party role
+      ansible.builtin.fail:
+        msg: >-
+          Failed while running geerlingguy.docker. If this third-party role is
+          not installed (this collection does not ship it), install it with:
+          ansible-galaxy role install -r requirements.yml (see the collection
+          README). Original error:
+          {{ ansible_failed_result.msg | default('the role could not be loaded') }}
+
+- name: Ensure required kernel modules are loaded
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ docker_kernel_modules }}"
+
+- name: Configure sysctl values for container networking
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ docker_sysctl_values }}"
+
+- name: Install python3-docker (required by Ansible's docker modules)
+  ansible.builtin.package:
+    name: python3-docker
+    state: present

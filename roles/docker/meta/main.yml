@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: docker
+  description: Docker Engine plus the kernel tuning Kasm workloads need
+  author: pepesan
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+
+# geerlingguy.docker is included from tasks/main.yml (include_role) rather
+# than declared here: a dependency always runs before the role's own tasks,
+# and the IPv4 preference has to be applied before it starts installing
+# packages. The role is still required, see the collection README and requirements.yml.
+dependencies: []
