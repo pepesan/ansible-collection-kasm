@@ -17,8 +17,8 @@ the (encrypted) global settings. Writes go directly to Kasm's Postgres.
 
 Each setting's current value is read first; the UPSERT for a given setting
 only runs when it differs from the desired value. A second run against an
-already-configured group reports no changes — this is what Molecule's
-`idempotence` check verifies for this role.
+already-configured group reports no changes — checked in the end-to-end
+run against a real Kasm server.
 
 ## Group lifecycle: create, never delete
 

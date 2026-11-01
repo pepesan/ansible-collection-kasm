@@ -1,7 +1,0 @@
----
-- name: Verify
-  hosts: all
-  tasks:
-    - name: No-op — see converge.yml and molecule.yml for why
-      ansible.builtin.debug:
-        msg: "Nothing to verify without a real Kasm instance."

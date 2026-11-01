@@ -41,12 +41,11 @@ scripts/check-build.sh            # construye el tarball, lo inspecciona y lo in
 scripts/molecule.sh student       # Molecule de un rol, con nombres completos
 ```
 
-Hay escenarios de Molecule para todos los roles, pero solo estos se ejecutan sin riesgo en una estación de trabajo: `linux_user`,
-`student` y `kasm_credentials`. Los escenarios de `docker`, `kasm` y `kasm_uninstall` cargan módulos del kernel y fijan valores de
-sysctl, lo que dentro de un contenedor privilegiado afecta al kernel **del anfitrión**, así que `scripts/molecule.sh` los rechaza
-(ejecútelos en una máquina virtual desechable, o ponga `MOLECULE_ALLOW_UNSAFE=1` sabiendo lo que hace). Los roles que hablan con un
-Kasm vivo (`kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user`, `kasm_docker_image`) no pueden ejecutarse en un contenedor
-aislado: se verifican contra un servidor real.
+Solo tres roles tienen escenario de Molecule, porque son los que se pueden probar en un contenedor aislado: `linux_user`,
+`student` y `kasm_credentials`. El resto lo cubren `ansible-lint` (todos) y la prueba de extremo a extremo contra un servidor real,
+no Molecule: `docker`, `kasm` y `kasm_uninstall` cargan módulos del kernel y fijan valores de sysctl, lo que dentro de un contenedor
+privilegiado afecta al kernel **del anfitrión**, y `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` y `kasm_docker_image`
+necesitan un Kasm vivo. La prueba de extremo a extremo no forma parte del CI: se ejecuta a mano antes de publicar una versión.
 
 ### De extremo a extremo en un servidor real
 

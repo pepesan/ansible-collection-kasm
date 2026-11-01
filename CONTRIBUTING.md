@@ -41,11 +41,11 @@ scripts/check-build.sh            # builds the tarball, inspects it and installs
 scripts/molecule.sh student       # Molecule for one role, using fully qualified names
 ```
 
-Molecule scenarios exist for every role, but only these run safely on a workstation: `linux_user`, `student` and
-`kasm_credentials`. The scenarios of `docker`, `kasm` and `kasm_uninstall` load kernel modules and set sysctl values, which
-inside a privileged container affects the **host's** kernel, so `scripts/molecule.sh` refuses them (run them in a disposable
-VM, or set `MOLECULE_ALLOW_UNSAFE=1` knowingly). The roles that talk to a live Kasm (`kasm_workspace`, `kasm_session`,
-`kasm_group`, `kasm_user`, `kasm_docker_image`) cannot run in an isolated container: they are verified against a real server.
+Only three roles have a Molecule scenario, because they are the ones that can be tested in an isolated container:
+`linux_user`, `student` and `kasm_credentials`. The rest are covered by `ansible-lint` (all of them) and by the end-to-end test
+against a real server, not by Molecule: `docker`, `kasm` and `kasm_uninstall` load kernel modules and set sysctl values, which
+inside a privileged container affects the **host's** kernel, and `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` and
+`kasm_docker_image` need a live Kasm. The end-to-end test is not part of the CI: it is run by hand before a release.
 
 ### End-to-end on a real server
 

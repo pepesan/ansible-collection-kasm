@@ -19,8 +19,8 @@ a Postgres de Kasm.
 
 El valor actual de cada ajuste se lee primero; el UPSERT de un ajuste
 concreto solo se ejecuta cuando difiere del valor deseado. Una segunda
-ejecución contra un grupo ya configurado no reporta cambios — es justo lo
-que verifica el chequeo `idempotence` de Molecule para este rol.
+ejecución contra un grupo ya configurado no reporta cambios — comprobado en la
+ejecución de extremo a extremo contra un servidor Kasm real.
 
 ## Ciclo de vida del grupo: crear, nunca borrar
 

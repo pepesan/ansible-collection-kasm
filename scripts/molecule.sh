@@ -9,24 +9,20 @@
 #   scripts/molecule.sh student
 #   scripts/molecule.sh linux_user converge
 #
-# SAFE roles on a workstation: linux_user, student, kasm_credentials.
-# The scenarios of docker, kasm and kasm_uninstall load kernel modules and set
-# sysctl values that, inside a privileged container, hit the HOST kernel: run
-# them only in a disposable VM. The Kasm-dependent roles (kasm_docker_image,
-# kasm_group, kasm_session, kasm_user, kasm_workspace) need a live Kasm and are
-# verified end to end against a real server instead.
+# Only three roles have a Molecule scenario: linux_user, student and kasm_credentials. They are the ones that can be tested
+# in an isolated container. The others either change the kernel of the machine (docker, kasm, kasm_uninstall: modprobe and
+# sysctl inside a privileged container hit the HOST kernel) or need a live Kasm (kasm_docker_image, kasm_group, kasm_user,
+# kasm_workspace, kasm_session), so they are verified end to end against a real server (see CONTRIBUTING.md).
 set -euo pipefail
 
 ROLE="${1:?Usage: $0 <role> [molecule args]}"
 shift || true
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
-case "$ROLE" in
-  docker|kasm|kasm_uninstall)
-    echo "Refusing: the '$ROLE' scenario modifies the host kernel (modprobe/sysctl)." >&2
-    echo "Run it in a disposable VM, or set MOLECULE_ALLOW_UNSAFE=1 to override." >&2
-    [ "${MOLECULE_ALLOW_UNSAFE:-0}" = "1" ] || exit 2 ;;
-esac
+if [ ! -d "$REPO/roles/$ROLE/molecule" ]; then
+  echo "The role '$ROLE' has no Molecule scenario. Roles that have one: $(cd "$REPO/roles" && ls -d */molecule 2>/dev/null | cut -d/ -f1 | tr '\n' ' ')" >&2
+  exit 2
+fi
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
