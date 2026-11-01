@@ -55,6 +55,9 @@ servidor, no de grupo, y se queda como tarea propia en
 
 ## Ejemplo
 
+
+Mantener vivas durante una semana las sesiones del grupo `Instructors` y permitir imprimir:
+
 ```yaml
 - hosts: ubuntu
   roles:
@@ -63,4 +66,31 @@ servidor, no de grupo, y se queda como tarea propia en
         kasm_group_name: "Instructors"
         kasm_group_keepalive_seconds: 604800
         kasm_group_allow_printing: true
+```
+
+Dos políticas en un mismo play, una restrictiva para los alumnos y otra abierta para el profesorado (cada ejecución solo cambia
+los ajustes cuyo valor difiere, así que repetirlo no cambia nada):
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_group
+      vars:
+        kasm_group_name: "All Users"
+        kasm_group_keepalive_seconds: 3600
+        kasm_group_keepalive_action: delete       # libera los recursos de las sesiones inactivas
+    - role: pepesan.kasm.kasm_group
+      vars:
+        kasm_group_name: "Instructors"
+        kasm_group_allow_clipboard_down: true
+        kasm_group_allow_clipboard_up: true
+        kasm_group_allow_downloads: true
+        kasm_group_allow_uploads: true
+```
+
+Compruebe lo aplicado (en el servidor, solo lectura):
+
+```bash
+docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm \
+  -c "SELECT g.name, gs.name, gs.value FROM group_settings gs JOIN groups g USING (group_id) ORDER BY 1,2;"
 ```

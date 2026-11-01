@@ -11,6 +11,6 @@ INVENTORY="${1:-inventory.example}"
 BASE_DOMAIN="${2:?Usage: $0 <inventory> <base_domain> <email>}"
 EMAIL="${3:?Usage: $0 <inventory> <base_domain> <email>}"
 
-ansible-playbook -i "${INVENTORY}" site-kasm.yml \
+ansible-playbook -i "${INVENTORY}" pepesan.kasm.site_kasm \
   -e kasm_base_domain="${BASE_DOMAIN}" \
   -e letsencrypt_email="${EMAIL}"

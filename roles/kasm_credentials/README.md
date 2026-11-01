@@ -13,12 +13,26 @@ generates, to include it in the same CSV row.
 Not covered by any Galaxy role or collection — this is Kasm-specific
 bookkeeping with no equivalent upstream.
 
+## Where to find each password
+
+All of this lives on the machine running Ansible (never in the repository):
+
+| Password | Where | Set a fixed one with |
+|---|---|---|
+| Linux user `student` | access CSV (`student_password`) and `.credentials/<host>-<student_name>.pass` | `-e student_password_plain=...` |
+| Kasm `admin@kasm.local` | access CSV (`kasm_admin_password`) and `.credentials/<host>-kasm-admin.pass` | `-e kasm_admin_password=...` |
+| Kasm built-in `user@kasm.local` | access CSV (`kasm_user_password` column) and `.credentials/<host>-kasm-user.pass` | `-e kasm_default_user_password=...` |
+| Kasm users created with [`kasm_user`](../kasm_user/README.md) | `.credentials/<host>-kasm-user-<username>.pass` only (the CSV has one row per host) | `-e kasm_user_password=...` |
+
+Any of them can be passed as a parameter; if not, a random one is generated once and reused on later runs. The CSV
+records the value actually in use, including a fixed one.
+
 ## Variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `kasm_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where generated password files live (keep in sync with `student_credentials_dir`) |
-| `kasm_admin_password` / `kasm_user_password` | random, persisted | Override with `-e` to set fixed passwords |
+| `kasm_admin_password` / `kasm_default_user_password` | random, persisted | Override with `-e` to set fixed passwords |
 | `kasm_credentials_admin_user` / `_user_user` | `admin@kasm.local` / `user@kasm.local` | Usernames recorded in the CSV |
 | `kasm_credentials_student_name` | `{{ student_name | default("student") }}` | Name of the Linux user created by [`student`](../student/README.md); follows `student_name` automatically so the right password file is read |
 | `kasm_credentials_csv_prefix` | `access-data` | Prefix of the CSV file name (letters, digits, `.`, `_`, `-`). The repository `.gitignore` only covers `access-data-*` (and the old `datos-acceso-*`): add your pattern if you change it |
@@ -51,10 +65,34 @@ same control node never corrupt the file or lose a row.
 
 ## Example
 
+
+Generate the passwords and record them in the access CSV (this is what the install playbook does before `kasm`):
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_credentials
+      vars:
+        node_name: kasmdemo
+        kasm_domain: "{{ node_name }}.kasm.example.com"   # the address written in the CSV
+```
+
+Fix some passwords yourself and name the CSV after the course, so deployments for different courses do not share a file:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.kasm_credentials
       vars:
         kasm_domain: "{{ node_name }}.example.com"
+        kasm_admin_password: "{{ vault_kasm_admin_password }}"
+        kasm_credentials_csv_name: "access-data-course-2026.csv"
+```
+
+Look at the result without printing any password:
+
+```bash
+head -1 access-data-*.csv                 # the columns
+cut -d, -f1,3 access-data-*.csv           # IP and Kasm URL of every server, sorted by host name
+ls -l .credentials/                       # one file per password, mode 600
 ```

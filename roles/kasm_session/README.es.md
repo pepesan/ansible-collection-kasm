@@ -14,15 +14,6 @@ Postgres, igual que `kasm_user`. Se autentica con la API key persistente que
 crea `kasm_workspace` en el host (`/opt/kasm/.kasm_api_key.json`), así que
 antes debe haberse registrado al menos un workspace en ese host.
 
-## Tests
-
-`scripts/molecule.sh kasm_session` ejecuta un escenario de Molecule contra una pequeña simulación de la API pública de Kasm
-(`molecule/default/mock_kasm_api.py`): sin Kasm real, sin contenedores, seguro en una estación de trabajo. Comprueba lanzar
-una sesión y esperar a que arranque, la idempotencia (contando las llamadas realmente enviadas), la búsqueda por nombre y por
-`friendly_name`, `state: absent` y los casos de error (usuario inexistente, workspace sin registrar o ambiguo, falta de clave
-de API, límite de sesiones). Prueba la lógica del rol contra la API tal como la entiende el rol; la API real se cubre en la
-ejecución extremo a extremo sobre un servidor real.
-
 ## Variables
 
 | Variable | Valor por defecto | Propósito |
@@ -74,13 +65,49 @@ ansible-playbook -i <inventario> kasm-session.yml \
 
 ## Ejemplo
 
+
+Iniciar la sesión de un usuario en un workspace registrado y esperar a que esté en marcha. Si la sesión ya existe, no se lanza
+nada:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.kasm_session
       vars:
         kasm_session_user: user@kasm.local
-        kasm_session_workspace: "Python Docker (Ubuntu 26.04)"
+        kasm_session_workspace: "pepesan/core-ubuntu-resolute:1.20"   # nombre de la imagen o nombre amigable
 ```
 
-Ver [`../examples/kasm-session.yml`](../examples/kasm-session.yml).
+Esperar más para una imagen grande y usar después los datos que exporta el rol:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_workspace: "Core Ubuntu Resolute"
+        kasm_session_timeout_seconds: 1200
+  tasks:
+    - ansible.builtin.debug:
+        msg: "La sesión {{ kasm_session_id }} está {{ kasm_session_status }}"
+```
+
+Destruir esa sesión:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_state: absent
+        kasm_session_workspace: "Core Ubuntu Resolute"
+```
+
+Desde la línea de comandos, con el playbook que trae la colección:
+
+```bash
+ansible-playbook -i inventory-mi-servidor pepesan.kasm.kasm_session \
+  -e kasm_session_workspace=pepesan/core-ubuntu-resolute:1.20
+```
+
+Ver [`playbooks/kasm_session.yml`](../../playbooks/kasm_session.yml).

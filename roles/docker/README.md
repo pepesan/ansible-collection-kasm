@@ -67,8 +67,37 @@ for its full variable list.
 
 ## Example
 
+
+Minimal: Docker Engine and the Compose plugin, with the kernel settings Kasm needs.
+
 ```yaml
 - hosts: ubuntu
   roles:
     - pepesan.kasm.docker
+```
+
+Docker for a CI user. The user must exist before it can join the `docker` group, so create it first with
+[`linux_user`](../linux_user/README.md). `docker_users` replaces the default list (the user Ansible connects as), and
+`docker_prefer_ipv4: false` keeps the distribution's address selection:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.linux_user
+      vars:
+        linux_user_name: ci-runner
+    - role: pepesan.kasm.docker
+      vars:
+        docker_users: [ci-runner]
+        docker_prefer_ipv4: false
+```
+
+Check it on the server (read-only):
+
+```bash
+docker --version && docker compose version
+systemctl is-active docker
+lsmod | grep -E 'overlay|br_netfilter'      # kernel modules
+sysctl net.ipv4.ip_forward                  # must be 1
+id ci-runner                                # lists the docker group
 ```

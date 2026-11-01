@@ -83,7 +83,10 @@
 
 - name: Tip — follow the install log in real time
   ansible.builtin.debug:
-    msg: "Follow progress from another terminal: ssh root@{{ inventory_hostname }} 'tail -f {{ kasm_dir }}/data/opt/kasm_deploy.log'"
+    msg: >-
+      Follow progress from another terminal (the log is readable by root only and
+      does not contain the passwords):
+      ssh root@{{ inventory_hostname }} 'tail -f {{ kasm_dir }}/data/opt/kasm_deploy.log'
 
 - name: Run the Kasm fix-and-install script
   community.docker.docker_container_exec:
@@ -91,7 +94,7 @@
     command: bash /scripts/fix_and_install_kasm.sh
     env:
       KASM_ADMIN_PASSWORD: "{{ kasm_admin_password }}"
-      KASM_USER_PASSWORD: "{{ kasm_user_password }}"
+      KASM_USER_PASSWORD: "{{ kasm_default_user_password }}"
   register: kasm_install_output
   changed_when: "'already installed' not in kasm_install_output.stdout"
   no_log: true

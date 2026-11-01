@@ -82,6 +82,18 @@ de los usuarios).
 
 ## Ejemplo
 
+
+El más rápido: sin indicar imagen, se usa la de por defecto (`pepesan/core-ubuntu-resolute:1.20`, registrada como "Core
+Ubuntu Resolute"). La imagen tiene que estar en el Docker de Kasm antes de registrar el workspace, de ahí que
+[`kasm_docker_image`](../kasm_docker_image/README.es.md) vaya primero:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - pepesan.kasm.kasm_docker_image
+    - pepesan.kasm.kasm_workspace
+```
+
 ```yaml
 - hosts: ubuntu
   roles:

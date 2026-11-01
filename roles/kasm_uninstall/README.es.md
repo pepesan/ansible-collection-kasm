@@ -32,13 +32,17 @@ hace nada la segunda vez.
 
 ## Ejemplo
 
+
+Eliminar Kasm y sus datos conservando el certificado de Let's Encrypt, para que reinstalar no gaste uno de los pocos
+certificados que se emiten por nombre y semana:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.kasm_uninstall
 ```
 
-Para forzar también un certificado TLS nuevo en la siguiente instalación:
+**Esto borra los datos de Kasm del servidor.** Para forzar además un certificado nuevo en la próxima instalación:
 
 ```yaml
 - hosts: ubuntu
@@ -48,4 +52,12 @@ Para forzar también un certificado TLS nuevo en la siguiente instalación:
         kasm_uninstall_remove_letsencrypt_certs: true
         node_name: kasmdemo
         kasm_base_domain: example.com
+```
+
+Desde la línea de comandos, con el playbook que trae la colección (y luego reinstalar desde cero):
+
+```bash
+ansible-playbook -i inventory-mi-servidor pepesan.kasm.kasm_uninstall 2>&1 | tee uninstall.log
+ansible-playbook -i inventory-mi-servidor pepesan.kasm.site_kasm \
+  -e kasm_base_domain=kasm.example.com -e letsencrypt_email=usted@example.com 2>&1 | tee install.log
 ```

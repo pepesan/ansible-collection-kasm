@@ -30,6 +30,12 @@ build_ignore:
   - .git
   - .gitignore
   - .github
+  - .ansible
+  - .ansible-lint
+  - .yamllint
+  - scripts
+  - __pycache__
+  - "*.pyc"
   - AGENTS.md
   - CLAUDE.md
   - PLAN.md

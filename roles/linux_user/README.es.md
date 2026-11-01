@@ -34,11 +34,34 @@ realmente idempotentes.
 
 ## Ejemplo
 
+
+Un usuario de CI en el grupo `docker`, con una contraseña aleatoria guardada en su máquina:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.linux_user
       vars:
-        linux_user_name: "ci-runner"
+        linux_user_name: ci-runner
         linux_user_extra_groups: [docker]
+```
+
+Una cuenta de servicio sin acceso interactivo, con una contraseña que usted aporta:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.linux_user
+      vars:
+        linux_user_name: backup
+        linux_user_shell: /usr/sbin/nologin
+        linux_user_password_plain: "{{ vault_backup_password }}"
+```
+
+Los grupos de `linux_user_extra_groups` se crean si no existen. Repetirlo no cambia nada y la contraseña no se reinicia: se
+reutiliza la guardada en `.credentials/<host>-<usuario>.pass`.
+
+```bash
+id ci-runner
+getent group docker
 ```

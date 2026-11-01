@@ -68,8 +68,37 @@ Para la lista completa de variables de `geerlingguy.docker`, ver su
 
 ## Ejemplo
 
+
+Mínimo: Docker Engine y el plugin Compose, con los ajustes del kernel que necesita Kasm.
+
 ```yaml
 - hosts: ubuntu
   roles:
     - pepesan.kasm.docker
+```
+
+Docker para un usuario de CI. El usuario debe existir antes de poder entrar en el grupo `docker`, así que se crea antes con
+[`linux_user`](../linux_user/README.es.md). `docker_users` sustituye a la lista por defecto (el usuario con el que se
+conecta Ansible) y `docker_prefer_ipv4: false` conserva la selección de direcciones de la distribución:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.linux_user
+      vars:
+        linux_user_name: ci-runner
+    - role: pepesan.kasm.docker
+      vars:
+        docker_users: [ci-runner]
+        docker_prefer_ipv4: false
+```
+
+Compruébelo en el servidor (solo lectura):
+
+```bash
+docker --version && docker compose version
+systemctl is-active docker
+lsmod | grep -E 'overlay|br_netfilter'      # módulos del kernel
+sysctl net.ipv4.ip_forward                  # debe valer 1
+id ci-runner                                # muestra el grupo docker
 ```

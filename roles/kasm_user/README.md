@@ -36,7 +36,8 @@ username exists yet, `delete_user` only runs if one does.
 |---|---|---|
 | `kasm_user_username` | — (required) | e.g. `user@kasm.local` |
 | `kasm_user_state` | `present` | `present` creates if missing; `absent` deletes if present |
-| `kasm_user_password` | `""` | Required in practice for `present` |
+| `kasm_user_password` | random (20 chars), persisted per host and user | Password of the Kasm user being created. Pass it with `-e` to set a fixed one |
+| `kasm_user_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where the generated password lives: `<dir>/<host>-kasm-user-<username>.pass` (mode 600) |
 | `kasm_user_first_name` / `_last_name` / `_organization` / `_phone` | `""` | Optional profile fields |
 | `kasm_user_locked` / `_disabled` | `false` | Account flags |
 | `kasm_url` | `https://127.0.0.1:443` | Kasm base URL |
@@ -44,11 +45,42 @@ username exists yet, `delete_user` only runs if one does.
 
 ## Example
 
+
+Create a Kasm user. The password is random by default (20 characters) and saved in
+`.credentials/<host>-kasm-user-<username>.pass` on your machine:
+
 ```yaml
 - hosts: ubuntu
   roles:
     - role: pepesan.kasm.kasm_user
       vars:
-        kasm_user_username: "user@kasm.local"
-        kasm_user_password: "{{ kasm_user_password_generated }}"
+        kasm_user_username: "alice@example.com"
+        kasm_user_first_name: "Alice"
+        kasm_user_last_name: "Smith"
 ```
+
+With a password of your own, kept in an Ansible Vault file:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_user
+      vars:
+        kasm_user_username: "alice@example.com"
+        kasm_user_password: "{{ vault_alice_password }}"
+```
+
+Delete a user:
+
+```yaml
+- hosts: ubuntu
+  roles:
+    - role: pepesan.kasm.kasm_user
+      vars:
+        kasm_user_username: "alice@example.com"
+        kasm_user_state: absent
+```
+
+It needs the persistent API key that registering the first workspace creates (see
+[`kasm_workspace`](../kasm_workspace/README.md)). This password is a different variable from the built-in
+`user@kasm.local`'s (`kasm_default_user_password`, see [`kasm_credentials`](../kasm_credentials/README.md)).

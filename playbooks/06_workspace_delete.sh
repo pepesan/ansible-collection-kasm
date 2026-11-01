@@ -14,7 +14,7 @@ KEEP_PROFILES="${3:-}"
 DELETE_PERSISTENT_DATA=true
 [ "${KEEP_PROFILES}" = "keep_profiles" ] && DELETE_PERSISTENT_DATA=false
 
-ansible-playbook -i "${INVENTORY}" kasm-workspace.yml \
+ansible-playbook -i "${INVENTORY}" pepesan.kasm.kasm_workspace \
   -e kasm_workspace_state=absent \
   -e kasm_docker_image_name="${IMAGE}" \
   -e kasm_workspace_image="${IMAGE}" \
