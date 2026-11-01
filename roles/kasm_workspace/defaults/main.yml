@@ -4,8 +4,15 @@ kasm_dir: /opt/kasm
 # present: create/reuse the workspace. absent: delete it (or all of them).
 kasm_workspace_state: present
 
-kasm_workspace_image: ""
-kasm_workspace_name: ""
+# Default image when creating a workspace: the Kasm core desktop image built
+# from https://github.com/pepesan/workspaces-core-images (Ubuntu 26.04, XFCE).
+# It is only used for state "present": deleting never falls back to a default,
+# so a delete always has to name its target (or use kasm_workspace_clean_all).
+kasm_workspace_default_image: pepesan/core-ubuntu-resolute:1.20
+kasm_workspace_image: "{{ kasm_workspace_default_image if kasm_workspace_state == 'present' else '' }}"
+# Default name only while the default image is used; a custom image needs its
+# own name.
+kasm_workspace_name: "{{ 'Core Ubuntu Resolute' if kasm_workspace_image == kasm_workspace_default_image else '' }}"
 kasm_workspace_desc: "{{ kasm_workspace_name }}"
 kasm_workspace_cores: 4
 kasm_workspace_memory_gb: 8

@@ -116,9 +116,13 @@
 - name: Set the canonical (dashed) ids used in requests
   ansible.builtin.set_fact:
     kasm_session_user_id: >-
-      {{ kasm_session_user_hex[0:8] }}-{{ kasm_session_user_hex[8:12] }}-{{ kasm_session_user_hex[12:16] }}-{{ kasm_session_user_hex[16:20] }}-{{ kasm_session_user_hex[20:32] }}
+      {{ kasm_session_user_hex[0:8] ~ '-' ~ kasm_session_user_hex[8:12] ~ '-'
+         ~ kasm_session_user_hex[12:16] ~ '-' ~ kasm_session_user_hex[16:20] ~ '-'
+         ~ kasm_session_user_hex[20:32] }}
     kasm_session_image_id: >-
-      {{ kasm_session_image_hex[0:8] }}-{{ kasm_session_image_hex[8:12] }}-{{ kasm_session_image_hex[12:16] }}-{{ kasm_session_image_hex[16:20] }}-{{ kasm_session_image_hex[20:32] }}
+      {{ kasm_session_image_hex[0:8] ~ '-' ~ kasm_session_image_hex[8:12] ~ '-'
+         ~ kasm_session_image_hex[12:16] ~ '-' ~ kasm_session_image_hex[16:20] ~ '-'
+         ~ kasm_session_image_hex[20:32] }}
 
 - name: List running sessions
   ansible.builtin.uri:

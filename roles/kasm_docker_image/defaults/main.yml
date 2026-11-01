@@ -1,5 +1,8 @@
 ---
-kasm_docker_image_name: ""
+# Follows kasm_workspace_image when that role is in the play, so the image
+# that gets pulled is the one the workspace uses. Default (present only):
+# pepesan/core-ubuntu-resolute:1.20. Removing (absent) always needs an explicit name.
+kasm_docker_image_name: "{{ (kasm_workspace_image | default('pepesan/core-ubuntu-resolute:1.20', true)) if kasm_docker_image_state == 'present' else '' }}"
 # present: pull the image if it isn't already in Kasm's DinD.
 # absent: remove it (fails loudly if a workspace still references it or a
 # session still uses it — stop the workspace/session first).

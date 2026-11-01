@@ -8,7 +8,7 @@ groups (e.g. `docker`, `sudo`) exist first — so it works even if nothing
 else created those groups yet.
 
 Not specific to this project or to Kasm at all. [`student`](../student/README.md)
-is a thin wrapper around this role that just fixes the username to `alumno`
+is a thin wrapper around this role that just fixes the username to `student`
 and its default groups.
 
 ## Idempotency note
@@ -27,7 +27,7 @@ the password itself (`linux_user_password_salt`, read via the same
 | `linux_user_name` | — (required) | Username and primary group name |
 | `linux_user_shell` | `/bin/bash` | Login shell |
 | `linux_user_extra_groups` | `[]` | Supplementary groups, created first if missing |
-| `linux_user_credentials_dir` | `{{ playbook_dir }}/.credenciales` | Where the password and salt files live |
+| `linux_user_credentials_dir` | `{{ playbook_dir }}/.credentials` | Where the password and salt files live |
 | `linux_user_password_plain` | random, persisted | Override with `-e` to set a fixed password |
 | `linux_user_password_salt` | random, persisted | Rarely overridden directly |
 

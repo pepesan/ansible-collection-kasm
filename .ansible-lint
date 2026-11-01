@@ -1,0 +1,11 @@
+---
+profile: production
+exclude_paths:
+  - .ansible/
+  - .git/
+  - roles/*/molecule/
+skip_list:
+  # Variables such as kasm_dir, kasm_url or kasm_admin_password are shared on
+  # purpose by several roles of this collection (one common "kasm_" namespace),
+  # so they cannot carry a per-role prefix.
+  - var-naming[no-role-prefix]

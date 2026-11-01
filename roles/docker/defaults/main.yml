@@ -6,8 +6,8 @@ docker_kernel_modules:
 
 # sysctl values required for container networking (bridged traffic routing).
 docker_sysctl_values:
-  - { key: net.ipv4.ip_forward, value: "1" }
-  - { key: net.bridge.bridge-nf-call-iptables, value: "1" }
+  - {key: net.ipv4.ip_forward, value: "1"}
+  - {key: net.bridge.bridge-nf-call-iptables, value: "1"}
 
 # Prefer IPv4 over IPv6 in glibc's address selection (/etc/gai.conf) before
 # anything is installed. Useful on VPS providers that advertise an IPv6 route

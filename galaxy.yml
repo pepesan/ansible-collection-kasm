@@ -9,6 +9,9 @@ description: Roles to install and manage Kasm Workspaces (Docker, TLS with Let's
 license:
   - GPL-3.0-or-later
 tags:
+  - infrastructure
+  - linux
+  - tools
   - kasm
   - workspaces
   - vdi
@@ -32,7 +35,9 @@ build_ignore:
   - PLAN.md
   - "*.tar.gz"
   - "*.log"
+  - .credentials
   - .credenciales
+  - "access-data-*"
   - "datos-acceso-*"
   - "kasm-api-key-*"
   - "inventory-*"

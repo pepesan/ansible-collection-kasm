@@ -17,7 +17,7 @@
   become: false
   run_once: true
 
-- name: Record this node's credentials in the access CSV (datos-acceso-<inventory>.csv)
+- name: Record this node's credentials in the access CSV (access-data-<inventory>.csv)
   ansible.builtin.command: >
     python3 {{ kasm_credentials_csv_dir }}/update_credentials_csv.py
     --csv-dir {{ kasm_credentials_csv_dir }}
@@ -25,12 +25,13 @@
     --kasm-url https://{{ kasm_domain }}
     --kasm-admin-user {{ kasm_credentials_admin_user }}
     --kasm-user-user {{ kasm_credentials_user_user }}
-    --proyecto-formativo "{{ kasm_proyecto_formativo }}"
+    --training-project "{{ kasm_training_project }}"
+    --csv-prefix {{ kasm_credentials_csv_prefix | quote }}
     {{ ('--csv-name ' ~ (kasm_credentials_csv_name | quote)) if kasm_credentials_csv_name else '' }}
   delegate_to: localhost
   become: false
   environment:
-    ALUMNO_PASSWORD: "{{ kasm_credentials_alumno_password }}"
+    STUDENT_PASSWORD: "{{ kasm_credentials_student_password }}"
     KASM_ADMIN_PASSWORD: "{{ kasm_admin_password }}"
     KASM_USER_PASSWORD: "{{ kasm_user_password }}"
   register: kasm_credentials_csv_update
@@ -43,7 +44,7 @@
     patterns: >-
       {{ kasm_credentials_csv_name
          if kasm_credentials_csv_name
-         else 'datos-acceso-' ~ ((kasm_proyecto_formativo | lower ~ '-') if kasm_proyecto_formativo else '') ~ now(fmt='%Y-%m-%d') ~ '.csv' }}
+         else kasm_credentials_csv_prefix ~ '-' ~ ((kasm_training_project | lower ~ '-') if kasm_training_project else '') ~ now(fmt='%Y-%m-%d') ~ '.csv' }}
   delegate_to: localhost
   become: false
   register: kasm_credentials_csv_found

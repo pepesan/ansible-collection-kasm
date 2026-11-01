@@ -6,7 +6,7 @@
   tasks:
     - name: Install Docker (needed to have something real to uninstall)
       ansible.builtin.include_role:
-        name: docker
+        name: pepesan.kasm.docker
 
     - name: Create the fake Kasm directory
       ansible.builtin.file:
@@ -34,4 +34,4 @@
 
     - name: Run the role under test
       ansible.builtin.include_role:
-        name: kasm_uninstall
+        name: pepesan.kasm.kasm_uninstall

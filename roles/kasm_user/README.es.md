@@ -3,7 +3,7 @@
 **Nombre completo:** `pepesan.kasm.kasm_user` (colección [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Crea o borra un usuario de la aplicación Kasm (ej. `user@kasm.local`) vía
-`kasm_user_state: present|absent` — **no** el usuario Linux `alumno` (ver
+`kasm_user_state: present|absent` — **no** el usuario Linux `student` (ver
 [`student`](../student/README.es.md)), sino una cuenta de Kasm dentro de la
 propia aplicación.
 
