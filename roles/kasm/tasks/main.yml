@@ -34,7 +34,13 @@
 # Ubuntu 23.10+/24.04+ restricts unprivileged user namespaces via AppArmor by
 # default. That breaks bwrap (used by GTK/glycin icon sandboxing and by
 # Chrome/Electron inside the session container), causing XFCE to crash-loop
-# into a black screen. Disabled at the host level.
+# into a black screen. Disabled at the host level. Debian's kernel has no such
+# setting (the file below does not exist), so there is nothing to do there.
+- name: Check whether the kernel has the AppArmor user namespace restriction
+  ansible.builtin.stat:
+    path: /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+  register: kasm_apparmor_userns
+
 - name: Disable AppArmor restriction on unprivileged user namespaces (avoids XFCE black screen)
   ansible.posix.sysctl:
     name: kernel.apparmor_restrict_unprivileged_userns
@@ -43,7 +49,12 @@
     state: present
     reload: true
     sysctl_file: /etc/sysctl.d/99-kasm-userns.conf
-  failed_when: false
+  when: kasm_apparmor_userns.stat.exists
+
+- name: Install curl (used by the Kasm helper scripts on the host)
+  ansible.builtin.package:
+    name: curl
+    state: present
 
 - name: Create the Kasm directory
   ansible.builtin.file:

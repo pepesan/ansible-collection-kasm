@@ -8,7 +8,12 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
-        - all
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
 
 # geerlingguy.docker is included from tasks/main.yml (include_role) rather
 # than declared here: a dependency always runs before the role's own tasks,

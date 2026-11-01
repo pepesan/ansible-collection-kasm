@@ -168,8 +168,14 @@
     validate_certs: false
     status_code: 200
   register: kasm_session_request
-  # A 200 from request_kasm means a session was created (the idempotency
-  # check above already skipped this task when one existed).
+  # Kasm answers 200 with an error_message and no kasm_id when it cannot start
+  # the session yet (for example right after a workspace was registered, while
+  # the agent is still busy with the image): retry a few times before failing.
+  retries: "{{ kasm_session_launch_retries }}"
+  delay: "{{ kasm_session_launch_delay }}"
+  until: (kasm_session_request.json.kasm_id | default('')) | length > 0
+  # A 200 from request_kasm with a kasm_id means a session was created (the
+  # idempotency check above already skipped this task when one existed).
   changed_when: true
   # The response carries a session token: never log it.
   no_log: true
@@ -182,6 +188,7 @@
     msg: >-
       request_kasm did not return a kasm_id (the user may have reached a
       session limit, or the host has no free cores/memory for this workspace).
+      Kasm said: {{ kasm_session_request.json.error_message | default('nothing') }}
   when:
     - kasm_session_state == 'present'
     - kasm_session_existing | length == 0

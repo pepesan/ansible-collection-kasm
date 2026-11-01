@@ -9,7 +9,7 @@ source is in [`playbooks/`](../playbooks), together with thin shell wrappers (`0
 
 ## 1. Before you start
 
-**Control node** (your machine): `ansible-core` 2.15+ and SSH access as `root` to the server (Ubuntu). Install the
+**Control node** (your machine): `ansible-core` 2.15+ and SSH access as `root` to the server (Ubuntu 24.04/26.04 or Debian 12/13). Install the
 collection and the third-party roles once (see the [README](../README.md#installation)).
 
 **Inventory.** One host per Kasm server. `node_name` decides the DNS name: the server is reached at
