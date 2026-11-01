@@ -30,8 +30,10 @@ esac
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/ansible_collections/pepesan"
-ln -s "$REPO" "$TMP/ansible_collections/pepesan/kasm"
+# A real copy of the collection (not a symbolic link: Molecule installs the collection of the checkout on its own
+# with --force and cannot replace a link). Molecule overwrites this copy, and if it did not, it would already be here.
+ansible-galaxy collection install "$REPO" -p "$TMP" --force >/dev/null 2>&1 \
+  || { echo "Could not install the collection from $REPO" >&2; exit 1; }
 
 # Setting ANSIBLE_COLLECTIONS_PATH replaces Ansible's default search paths, which would hide the collections
 # installed there (community.docker, needed by Molecule's Docker driver). So the configured paths are kept.
