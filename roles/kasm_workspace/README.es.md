@@ -26,6 +26,7 @@ simplifique nada.
 
 Las variables se agrupan por lo que configuran, no solo alfabéticamente:
 
+- **Imagen por defecto** (solo al crear): `kasm_workspace_default_image` = `pepesan/core-ubuntu-resolute:1.20`, un escritorio core de Kasm (Ubuntu 26.04, XFCE) construido desde [`pepesan/workspaces-core-images`](https://github.com/pepesan/workspaces-core-images). Con ella, `kasm_workspace_name` vale `Core Ubuntu Resolute` por defecto; con una imagen propia el nombre es obligatorio. Al borrar (`absent`) la imagen nunca se rellena sola: indique `kasm_workspace_image` o `kasm_workspace_clean_all`.
 - **Núcleo del workspace**: `kasm_workspace_image`, `_name`, `_desc`, `_cores`,
   `_memory_gb`, `_privileged`, `_gpu_count`, `_session_time_limit`,
   `_category`, `_enabled`.

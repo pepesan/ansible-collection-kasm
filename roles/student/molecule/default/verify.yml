@@ -2,19 +2,19 @@
 - name: Verify
   hosts: all
   tasks:
-    - name: Gather the alumno user's facts
+    - name: Gather the student user's facts
       ansible.builtin.getent:
         database: passwd
-        key: alumno
+        key: student
 
-    - name: Assert the alumno user exists with the right shell
+    - name: Assert the student user exists with the right shell
       ansible.builtin.assert:
         that:
-          - "'alumno' in getent_passwd"
-          - getent_passwd.alumno[5] == "/bin/bash"
+          - "'student' in getent_passwd"
+          - getent_passwd.student[5] == "/bin/bash"
 
-    - name: Assert alumno belongs to the docker and sudo groups
-      ansible.builtin.command: id -nG alumno
+    - name: Assert student belongs to the docker and sudo groups
+      ansible.builtin.command: id -nG student
       register: student_groups
       changed_when: false
       failed_when: >-

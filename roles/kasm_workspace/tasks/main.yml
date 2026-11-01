@@ -68,7 +68,7 @@
       register: kasm_workspace_api_key_remote_content
       when: kasm_workspace_api_key_remote_stat.stat.exists
 
-    # Local (control node) copy, gitignored via .credenciales/, so other
+    # Local (control node) copy, gitignored via .credentials/, so other
     # tasks/playbooks can reuse the same API key without going back to
     # Kasm's database over SSH.
     - name: Save a local copy of Kasm's API key

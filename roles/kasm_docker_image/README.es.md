@@ -18,7 +18,7 @@ pull de una imagen ya presente o borrar una ya ausente no hace nada.
 
 | Variable | Valor por defecto | Propósito |
 |---|---|---|
-| `kasm_docker_image_name` | — (obligatoria) | ej. `usuario/imagen:tag` |
+| `kasm_docker_image_name` | `pepesan/core-ubuntu-resolute:1.20` con `present` (sigue a `kasm_workspace_image`); **obligatoria** con `absent` | ej. `usuario/imagen:tag`. Borrar nunca usa un valor por defecto |
 | `kasm_docker_image_state` | `present` | `present` hace pull si falta; `absent` borra si está presente |
 | `kasm_docker_image_prune_after_remove` | `true` | También ejecuta `docker image prune -f` tras borrar (solo con absent) |
 

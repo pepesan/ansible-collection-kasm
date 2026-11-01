@@ -12,8 +12,6 @@ platforms:
     command: ""
 provisioner:
   name: ansible
-  env:
-    ANSIBLE_ROLES_PATH: "../../.."
   playbooks:
     converge: converge.yml
 verifier:

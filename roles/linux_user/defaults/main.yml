@@ -7,7 +7,7 @@ linux_user_extra_groups: []
 # salt are persisted, so repeated runs reuse the same values instead of
 # rotating the password or producing a different hash every time (see
 # linux_user_password_salt below).
-linux_user_credentials_dir: "{{ playbook_dir }}/.credenciales"
+linux_user_credentials_dir: "{{ playbook_dir }}/.credentials"
 linux_user_pass_prefix: "{{ linux_user_credentials_dir }}/{{ inventory_hostname }}-{{ linux_user_name }}"
 
 # Random per-host password, generated once and re-read on later runs.

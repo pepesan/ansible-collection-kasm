@@ -1,9 +1,6 @@
 PLAN.md
 CLAUDE.md
 AGENTS.md
-.credenciales/
-datos-acceso-*.csv
-.datos-acceso*.lock
 kasm-api-key-*.json
 inventory-*
 !playbooks/inventory.example
@@ -15,3 +12,9 @@ __pycache__/
 .venv
 .molecule/
 .ansible/
+.credentials/
+.credenciales/
+access-data-*.csv
+datos-acceso-*.csv
+.access-data*.lock
+.datos-acceso*.lock

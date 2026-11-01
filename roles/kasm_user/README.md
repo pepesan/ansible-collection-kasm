@@ -3,7 +3,7 @@
 **Fully qualified name:** `pepesan.kasm.kasm_user` (collection [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Creates or deletes a Kasm application user (e.g. `user@kasm.local`) via
-`kasm_user_state: present|absent` — **not** the Linux `alumno` user (see
+`kasm_user_state: present|absent` — **not** the Linux `student` user (see
 [`student`](../student/README.md)), a Kasm account inside the application
 itself.
 

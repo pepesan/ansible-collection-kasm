@@ -1,5 +1,5 @@
 ---
-# Full Kasm Workspaces install: Docker, the "alumno" student user, Kasm
+# Full Kasm Workspaces install: Docker, the student user, Kasm
 # itself (TLS on by default), and per-group session settings.
 #
 # Usage:

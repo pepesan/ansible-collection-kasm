@@ -2,7 +2,7 @@
 - name: Converge
   hosts: all
   roles:
-    - role: kasm
+    - role: pepesan.kasm.kasm
       vars:
         kasm_base_domain: molecule.example.com
         kasm_letsencrypt_enabled: false

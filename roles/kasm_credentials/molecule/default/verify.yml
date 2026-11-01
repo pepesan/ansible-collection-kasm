@@ -9,7 +9,7 @@
     - name: Find the generated access CSV
       ansible.builtin.find:
         paths: /tmp/molecule-kasm-credentials
-        patterns: "datos-acceso-*.csv"
+        patterns: "access-data-*.csv"
       delegate_to: localhost
       become: false
       register: kasm_credentials_verify_csv

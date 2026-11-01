@@ -4,7 +4,7 @@
   tasks:
     - name: Include the linux_user role
       ansible.builtin.include_role:
-        name: linux_user
+        name: pepesan.kasm.linux_user
       vars:
         linux_user_name: molecule_test_user
         linux_user_extra_groups:
