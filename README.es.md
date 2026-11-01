@@ -120,7 +120,7 @@ suba nunca a un repositorio el CSV, `.credentials/` ni su inventario**: la IP de
   se pueden ejecutar en un contenedor aislado, así que se verifican de extremo a extremo contra un servidor real.
 - Extremo a extremo en un servidor Ubuntu 26.04 limpio: instalación completa, repetición (sin cambios), workspace, sesión.
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md).
+Ver [CONTRIBUTING.es.md](CONTRIBUTING.es.md).
 
 ## Repositorios relacionados
 
