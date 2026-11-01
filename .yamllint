@@ -4,6 +4,13 @@ ignore: |
   .ansible/
   .git/
 rules:
+  # These two are required by ansible-lint's own yaml checks.
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
   line-length:
     max: 160
     level: warning

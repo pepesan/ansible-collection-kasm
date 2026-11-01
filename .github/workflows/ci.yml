@@ -31,6 +31,8 @@ jobs:
         run: |
           ansible-galaxy collection install -r requirements.yml
           ansible-galaxy role install -r requirements.yml
+      - name: Install this collection, so that pepesan.kasm.* resolves in the playbooks
+        run: ansible-galaxy collection install . --force
       - name: ansible-lint
         run: ansible-lint
       - name: yamllint

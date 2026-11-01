@@ -71,6 +71,8 @@
         phone: "{{ kasm_user_phone }}"
     validate_certs: false
     status_code: 200
+  # Only runs when the user is missing, so reaching Kasm's API here is a real change.
+  changed_when: true
   when:
     - kasm_user_state == "present"
     - kasm_user_existing is none
@@ -89,6 +91,8 @@
       force: true
     validate_certs: false
     status_code: 200
+  # Only runs when the user exists, so reaching Kasm's API here is a real change.
+  changed_when: true
   when:
     - kasm_user_state == "absent"
     - kasm_user_existing is not none
