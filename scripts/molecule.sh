@@ -33,6 +33,12 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/ansible_collections/pepesan"
 ln -s "$REPO" "$TMP/ansible_collections/pepesan/kasm"
 
-export ANSIBLE_COLLECTIONS_PATH="$TMP:${ANSIBLE_COLLECTIONS_PATH:-}"
+# Setting ANSIBLE_COLLECTIONS_PATH replaces Ansible's default search paths, which would hide the collections
+# installed there (community.docker, needed by Molecule's Docker driver). So the configured paths are kept.
+DEFAULT_PATHS="$(ansible-config dump -f json 2>/dev/null | python3 -c "
+import json, sys
+print(':'.join(next(x['value'] for x in json.load(sys.stdin) if x['name'] == 'COLLECTIONS_PATHS')))" 2>/dev/null)"
+DEFAULT_PATHS="${DEFAULT_PATHS:-$HOME/.ansible/collections:/usr/share/ansible/collections}"
+export ANSIBLE_COLLECTIONS_PATH="$TMP:$DEFAULT_PATHS"
 cd "$REPO/roles/$ROLE"
 molecule "${@:-test}"
