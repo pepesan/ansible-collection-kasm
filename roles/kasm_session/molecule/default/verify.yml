@@ -1,0 +1,209 @@
+---
+# Each failure case runs the role inside a block/rescue, keeps the error
+# message and asserts on it. The fake API counts every call, so idempotency is
+# checked on what the role REALLY sent, not on Ansible's "changed" flag.
+- name: Verify
+  hosts: all
+  gather_facts: false
+  vars:
+    mock_ws: "pepesan/core-ubuntu-resolute:1.20"
+    kasm_user_uuid: "22222222-2222-4222-8222-222222222222"
+    core_image_uuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+  tasks:
+    - name: Read the fake API state
+      ansible.builtin.uri:
+        url: "{{ kasm_url }}/_state"
+        return_content: true
+      register: api_state
+
+    - name: Converge launched exactly one session, with canonical dashed ids
+      ansible.builtin.assert:
+        that:
+          - api_state.json.counts.request_kasm == 1
+          - api_state.json.kasms | length == 1
+          - api_state.json.kasms[0].user_id == kasm_user_uuid
+          - api_state.json.kasms[0].image_id == core_image_uuid
+        fail_msg: "{{ api_state.json | to_json }}"
+
+    - name: The role waited through the "starting" answers (3 polls = 2 starting + running)
+      ansible.builtin.assert:
+        that: api_state.json.counts.get_kasm_status >= 3
+
+    - name: Running the role again finds the existing session and exports its facts
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_workspace: "{{ mock_ws }}"
+        kasm_session_poll_seconds: 1
+
+    - name: No second session was requested (idempotent) and the facts are right
+      ansible.builtin.uri:
+        url: "{{ kasm_url }}/_state"
+        return_content: true
+      register: api_state_after
+
+    - ansible.builtin.assert:
+        that:
+          - api_state_after.json.counts.request_kasm == 1
+          - kasm_session_id == api_state.json.kasms[0].kasm_id
+          - kasm_session_status == 'running'
+          - kasm_session_container_id == 'container-' ~ kasm_session_id[:8]
+
+    - name: The workspace can also be named by its friendly_name
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_workspace: "Core Ubuntu Resolute"
+        kasm_session_poll_seconds: 1
+
+    - name: Still the same single session
+      ansible.builtin.uri:
+        url: "{{ kasm_url }}/_state"
+        return_content: true
+      register: api_state_friendly
+
+    - ansible.builtin.assert:
+        that:
+          - api_state_friendly.json.counts.request_kasm == 1
+          - kasm_session_id == api_state.json.kasms[0].kasm_id
+
+    # ------------------------------------------------------------ failures
+    - name: A user that does not exist is reported with the known users
+      block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: "{{ mock_ws }}"
+            kasm_session_user: "nobody@kasm.local"
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that:
+          - "'does not exist on this host' in case_msg"
+          - "'user@kasm.local' in case_msg"
+
+    - name: A workspace that is not registered is reported with the registered ones
+      block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: "does/not-exist:1"
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that:
+          - "'No registered workspace matches' in case_msg"
+          - "'Other Desktop' in case_msg"
+
+    - name: An ambiguous workspace name is refused
+      block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: "Duplicated"
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that: "'Several workspaces match' in case_msg"
+
+    - name: The workspace is required
+      block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: ""
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that: "'kasm_session_workspace is required' in case_msg"
+
+    - name: A missing API key file explains how to create it
+      block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: "{{ mock_ws }}"
+            kasm_session_api_key_file: "{{ mock_dir }}/no-such-key.json"
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that:
+          - "'does not exist on this host' in case_msg"
+          - "'kasm_workspace role' in case_msg"
+
+    - name: Kasm refusing the session (limit reached) is reported
+      ansible.builtin.uri:
+        url: "{{ kasm_url }}/_reset"
+        method: POST
+        body_format: json
+        body:
+          limit_reached: true
+    - block:
+        - ansible.builtin.set_fact:
+            case_msg: ""
+        - ansible.builtin.include_role:
+            name: pepesan.kasm.kasm_session
+          vars:
+            kasm_session_workspace: "Other Desktop"
+      rescue:
+        - ansible.builtin.set_fact:
+            case_msg: "{{ ansible_failed_result.msg | default('') }}"
+    - ansible.builtin.assert:
+        that: "'did not return a kasm_id' in case_msg"
+
+    # ------------------------------------------------------------- absent
+    - name: Start again from a clean state and launch a session to destroy
+      ansible.builtin.uri:
+        url: "{{ kasm_url }}/_reset"
+        method: POST
+        body_format: json
+        body:
+          starting_polls: 0
+    - ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_workspace: "{{ mock_ws }}"
+        kasm_session_poll_seconds: 1
+
+    - name: state absent destroys that session
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_state: absent
+        kasm_session_workspace: "{{ mock_ws }}"
+    - ansible.builtin.uri:
+        url: "{{ kasm_url }}/_state"
+        return_content: true
+      register: api_state_absent
+    - ansible.builtin.assert:
+        that:
+          - api_state_absent.json.counts.destroy_kasm == 1
+          - api_state_absent.json.kasms | length == 0
+
+    - name: state absent again is a no-op (nothing left to destroy)
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_session
+      vars:
+        kasm_session_state: absent
+        kasm_session_workspace: "{{ mock_ws }}"
+    - ansible.builtin.uri:
+        url: "{{ kasm_url }}/_state"
+        return_content: true
+      register: api_state_absent_again
+    - ansible.builtin.assert:
+        that: api_state_absent_again.json.counts.destroy_kasm == 1

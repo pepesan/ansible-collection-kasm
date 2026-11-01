@@ -14,6 +14,15 @@ Postgres, igual que `kasm_user`. Se autentica con la API key persistente que
 crea `kasm_workspace` en el host (`/opt/kasm/.kasm_api_key.json`), así que
 antes debe haberse registrado al menos un workspace en ese host.
 
+## Tests
+
+`scripts/molecule.sh kasm_session` ejecuta un escenario de Molecule contra una pequeña simulación de la API pública de Kasm
+(`molecule/default/mock_kasm_api.py`): sin Kasm real, sin contenedores, seguro en una estación de trabajo. Comprueba lanzar
+una sesión y esperar a que arranque, la idempotencia (contando las llamadas realmente enviadas), la búsqueda por nombre y por
+`friendly_name`, `state: absent` y los casos de error (usuario inexistente, workspace sin registrar o ambiguo, falta de clave
+de API, límite de sesiones). Prueba la lógica del rol contra la API tal como la entiende el rol; la API real se cubre en la
+ejecución extremo a extremo sobre un servidor real.
+
 ## Variables
 
 | Variable | Valor por defecto | Propósito |

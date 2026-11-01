@@ -1,0 +1,35 @@
+---
+# Tests the role's logic against a small fake of Kasm's public API
+# (mock_kasm_api.py): no real Kasm, no containers, nothing privileged and no
+# kernel changes, so it is safe to run on a workstation. It runs on localhost.
+# The real API is exercised in the end-to-end run against a real server.
+driver:
+  name: default
+  options:
+    managed: false
+platforms:
+  - name: localhost
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        mock_port: 18943
+        mock_dir: "{{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}"
+        kasm_dir: "{{ mock_dir }}/kasm"
+        kasm_url: "http://127.0.0.1:{{ mock_port }}"
+    hosts:
+      all:
+        hosts:
+          localhost:
+            ansible_connection: local
+            ansible_python_interpreter: "{{ ansible_playbook_python }}"
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - cleanup
