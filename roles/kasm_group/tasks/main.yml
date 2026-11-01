@@ -4,8 +4,8 @@
 # every payload tried, and the values here are per-group overrides, not the
 # encrypted global ones). Idempotent by design: each setting's current value
 # is read first and the UPSERT only runs when it differs from the desired
-# one, so a second run reports no changes (verified by Molecule's
-# idempotence check).
+# one, so a second run reports no changes (checked in the end-to-end run
+# against a real Kasm server).
 
 - name: Look up the target group's id
   ansible.builtin.command: >
