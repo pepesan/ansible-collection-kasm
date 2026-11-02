@@ -6,7 +6,7 @@ Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmwe
 usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo, workspaces, usuarios, sesiones y una
 desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
 
-> **Versión actual de Galaxy (0.0.2).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0.
+> **Versión actual de Galaxy (0.0.3).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0.
 > Es un proyecto independiente, sin relación con Kasm Technologies ni respaldado por ella.
 
 ## Qué incluye

@@ -6,7 +6,7 @@ Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/)
 Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
 clean uninstall. Every step is idempotent: running it again changes nothing.
 
-> **Current release (0.0.2).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0.
+> **Current release (0.0.3).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0.
 > This is an independent project, not affiliated with or endorsed by Kasm Technologies.
 
 ## What is inside

@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-11-02
+
 ### Added
 - Per-host public DNS A/AAAA preflight before Kasm installation, with expected-IP validation and a final `site_kasm` summary of failed nodes.
 - Added a check-only inventory preflight playbook. It validates the `kasm`
