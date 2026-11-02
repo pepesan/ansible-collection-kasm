@@ -56,7 +56,11 @@ jobs:
 
   molecule:
     name: Molecule (${{ matrix.role }})
-    runs-on: ${{ (github.event_name != 'pull_request' && github.actor == 'pepesan' && contains(fromJSON('["main", "develop"]'), github.ref_name) && vars.LORIEN_RUNNER_LABEL) || 'ubuntu-latest' }}
+    runs-on: >-
+      ${{ (github.event_name != 'pull_request'
+        && github.actor == 'pepesan'
+        && contains(fromJSON('["main", "develop"]'), github.ref_name)
+        && vars.LORIEN_RUNNER_LABEL) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -73,12 +77,20 @@ jobs:
       - name: Install the collections
         run: ansible-galaxy collection install -r requirements.yml
       - name: Configure rootless Podman Docker API
-        if: github.event_name != 'pull_request' && github.actor == 'pepesan' && contains(fromJSON('["main", "develop"]'), github.ref_name) && vars.LORIEN_RUNNER_LABEL
+        if: >-
+          ${{ github.event_name != 'pull_request'
+            && github.actor == 'pepesan'
+            && contains(fromJSON('["main", "develop"]'), github.ref_name)
+            && vars.LORIEN_RUNNER_LABEL }}
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           printf 'DOCKER_HOST=unix:///run/user/%s/podman/podman.sock\n' "$(id -u)" >> "$GITHUB_ENV"
       - name: Verify rootless Podman Docker API
-        if: github.event_name != 'pull_request' && github.actor == 'pepesan' && contains(fromJSON('["main", "develop"]'), github.ref_name) && vars.LORIEN_RUNNER_LABEL
+        if: >-
+          ${{ github.event_name != 'pull_request'
+            && github.actor == 'pepesan'
+            && contains(fromJSON('["main", "develop"]'), github.ref_name)
+            && vars.LORIEN_RUNNER_LABEL }}
         run: python3 -c 'import docker; print(docker.from_env().version())'
       - name: Molecule
         run: scripts/molecule.sh ${{ matrix.role }} test
