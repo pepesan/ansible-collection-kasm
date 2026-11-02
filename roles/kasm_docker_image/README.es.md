@@ -33,7 +33,7 @@ Descargar una imagen en el Docker de Kasm de antemano, para que la primera sesi√
 workspace:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_docker_image
       vars:
@@ -49,7 +49,7 @@ workspace:
 Sin indicar nombre se descarga la imagen por defecto: `pepesan/core-ubuntu-resolute:1.20`.
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.kasm_docker_image
 ```
@@ -58,7 +58,7 @@ Eliminar una imagen. Borre antes el workspace y sus sesiones; si no, el rol fall
 defecto, as√≠ que el nombre es obligatorio:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_docker_image
       vars:

@@ -107,7 +107,7 @@ y en `.credentials/` de la máquina que ejecuta Ansible (ver [`kasm_credentials`
 La instalación completa, en el orden habitual (es lo que hace el playbook `pepesan.kasm.site_kasm`):
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
     - pepesan.kasm.student
@@ -123,7 +123,7 @@ La instalación completa, en el orden habitual (es lo que hace el playbook `pepe
 Una instalación de prueba sin certificado (Kasm conserva el suyo autofirmado) y con menos swap:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
     - pepesan.kasm.kasm_credentials

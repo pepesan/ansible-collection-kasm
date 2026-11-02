@@ -84,14 +84,14 @@ Ubuntu Resolute"). The image has to be in Kasm's Docker before the workspace is 
 [`kasm_docker_image`](../kasm_docker_image/README.md) first:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.kasm_docker_image
     - pepesan.kasm.kasm_workspace
 ```
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:
@@ -103,7 +103,7 @@ Ubuntu Resolute"). The image has to be in Kasm's Docker before the workspace is 
 
 ```yaml
 # DinD image example (requires privileged: true for internal dockerd)
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:
@@ -115,7 +115,7 @@ Ubuntu Resolute"). The image has to be in Kasm's Docker before the workspace is 
 
 ```yaml
 # Delete it again
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:

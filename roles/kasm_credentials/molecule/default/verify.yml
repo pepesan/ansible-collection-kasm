@@ -25,10 +25,20 @@
       become: false
       register: kasm_credentials_verify_csv_content
 
-    - name: Assert it contains this host's row
-      ansible.builtin.assert:
-        that: (kasm_credentials_verify_csv_content.content | b64decode) is search(inventory_hostname)
+    - name: Split the CSV into header and row
+      ansible.builtin.set_fact:
+        kasm_credentials_verify_csv_lines: '{{ (kasm_credentials_verify_csv_content.content | b64decode | trim).splitlines() }}'
 
+    - name: Assert the current schema, sorted URL first and a single named row
+      ansible.builtin.assert:
+        that:
+          - kasm_credentials_verify_csv_lines | length == 2
+          - >-
+            kasm_credentials_verify_csv_lines[0] ==
+            "kasm_url,ip,nombre,student_user,student_password,kasm_admin_user,kasm_admin_password,kasm_normal_user,kasm_normal_user_password"
+          - (kasm_credentials_verify_csv_lines[1] | split(','))[0] == "https://molecule.example.com"
+          - (kasm_credentials_verify_csv_lines[1] | split(','))[2] == inventory_hostname
+          - (kasm_credentials_verify_csv_lines[1] | split(','))[3] == "student"
     - name: Clean up the temp directory on the control node
       ansible.builtin.file:
         path: /tmp/molecule-kasm-credentials

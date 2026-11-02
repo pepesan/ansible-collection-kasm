@@ -71,7 +71,7 @@ for its full variable list.
 Minimal: Docker Engine and the Compose plugin, with the kernel settings Kasm needs.
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
 ```
@@ -81,7 +81,7 @@ Docker for a CI user. The user must exist before it can join the `docker` group,
 `docker_prefer_ipv4: false` keeps the distribution's address selection:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:

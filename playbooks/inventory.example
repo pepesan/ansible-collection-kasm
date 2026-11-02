@@ -1,6 +1,6 @@
-[ubuntu]
+[kasm]
 203.0.113.10 node_name=node01
 
-[ubuntu:vars]
+[kasm:vars]
 ansible_user=root
 ansible_become=false

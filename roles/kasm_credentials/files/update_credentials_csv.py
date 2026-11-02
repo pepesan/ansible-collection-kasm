@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Creates/updates a row (keyed by IP) in the Kasm deployment credentials CSV.
-Rows are kept sorted by the host name of their Kasm URL (natural order).
+"""Creates/updates one Kasm deployment CSV row per node.
+Rows are sorted by the full Kasm URL and deduplicated by IP or inventory name.
 
 Runs on the Ansible control node (delegate_to: localhost), never on the
 remote host. Passwords are passed via environment variables, not command
@@ -20,17 +20,18 @@ import os
 import re
 import sys
 import argparse
-from urllib.parse import urlparse
 from datetime import date
 
 COLUMNS = [
-    "ip",
-    "student_password",
     "kasm_url",
+    "ip",
+    "nombre",
+    "student_user",
+    "student_password",
     "kasm_admin_user",
     "kasm_admin_password",
-    "kasm_user_user",
-    "kasm_user_password",
+    "kasm_normal_user",
+    "kasm_normal_user_password",
 ]
 
 
@@ -91,45 +92,73 @@ def safe_csv_name(name):
     return name
 
 
-def natural_key(text):
-    """Natural sort key: digit runs compare as numbers, so node2 < node10."""
-    return [int(part) if part.isdigit() else part.lower()
-            for part in re.split(r"(\d+)", text or "")]
 
+def normalize_row(row):
+    """Maps current and legacy CSV schemas to the current column contract."""
+    return {
+        "kasm_url": row.get("kasm_url", "") or "",
+        "ip": row.get("ip", "") or "",
+        "nombre": row.get("nombre", "") or "",
+        "student_user": row.get("student_user", "") or "",
+        "student_password": row.get("student_password", "") or "",
+        "kasm_admin_user": row.get("kasm_admin_user", "") or "",
+        "kasm_admin_password": row.get("kasm_admin_password", "") or "",
+        "kasm_normal_user": row.get("kasm_normal_user", row.get("kasm_user_user", "")) or "",
+        "kasm_normal_user_password": row.get(
+            "kasm_normal_user_password", row.get("kasm_user_password", "")
+        ) or "",
+    }
+
+
+def same_node(left, right):
+    """Identifies duplicate rows by either IP or inventory name."""
+    return (
+        bool(left.get("ip") and right.get("ip") and left["ip"] == right["ip"])
+        or bool(left.get("nombre") and right.get("nombre") and left["nombre"] == right["nombre"])
+    )
 
 def row_sort_key(row):
-    """Sorts rows by the host name of their Kasm URL (node30 before node31),
-    using the IP as a tie-breaker. Rows without a URL go last."""
-    url = row.get("kasm_url", "") or ""
-    host = urlparse(url).hostname or url
-    return (host == "", natural_key(host), natural_key(row.get("ip", "")))
+    """Sorts by the full Kasm URL, then IP and node name."""
+    return (
+        not bool(row.get("kasm_url", "")),
+        row.get("kasm_url", ""),
+        row.get("ip", ""),
+        row.get("nombre", ""),
+    )
 
 
-def update_row(csv_path, ip, row):
-    """Returns True if the file was actually rewritten (the row is new or
-    differs from what was already there), False if the existing row already
-    matched and nothing was written — this lets the caller report accurate
-    changed/unchanged status instead of always claiming a change."""
-    rows_by_ip = {}
+def update_row(csv_path, ip, name, row):
+    """Upserts one node, migrates legacy columns, and removes duplicate identities."""
+    fieldnames = None
+    source_rows = []
     if os.path.exists(csv_path):
         with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
-            for existing_row in reader:
-                rows_by_ip[existing_row["ip"]] = existing_row
+            fieldnames = reader.fieldnames or []
+            source_rows = list(reader)
 
-    existing_row = rows_by_ip.get(ip)
-    rows_by_ip[ip] = row
-    ordered_ips = sorted(rows_by_ip, key=lambda k: row_sort_key(rows_by_ip[k]))
-    # Nothing to write only if the row is unchanged AND the file is already sorted.
-    if existing_row == row and list(rows_by_ip) == ordered_ips:
+    normalized_rows = [normalize_row(existing) for existing in source_rows]
+    remaining_rows = []
+    for existing in normalized_rows:
+        # A legacy row keyed by inventory_hostname is the same node as the
+        # new row keyed by ansible_host; remove both when either identity matches.
+        if existing["ip"] in (ip, name) or existing["nombre"] == name:
+            continue
+        if any(same_node(existing, retained) for retained in remaining_rows):
+            continue
+        remaining_rows.append(existing)
+
+    new_row = normalize_row(row)
+    remaining_rows = [existing for existing in remaining_rows if not same_node(existing, new_row)]
+    ordered_rows = sorted(remaining_rows + [new_row], key=row_sort_key)
+    if fieldnames == COLUMNS and normalized_rows == ordered_rows:
         return False
 
     tmp_path = csv_path + ".tmp"
     with open(tmp_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=COLUMNS)
         writer.writeheader()
-        for ip_key in ordered_ips:
-            writer.writerow(rows_by_ip[ip_key])
+        writer.writerows(ordered_rows)
     os.chmod(tmp_path, 0o600)
     os.replace(tmp_path, csv_path)  # atomic within the same filesystem
     return True
@@ -139,9 +168,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv-dir", required=True)
     parser.add_argument("--ip", required=True)
+    parser.add_argument("--name", required=True)
+    parser.add_argument("--student-user", required=True)
     parser.add_argument("--kasm-url", required=True)
     parser.add_argument("--kasm-admin-user", required=True)
-    parser.add_argument("--kasm-user-user", required=True)
+    parser.add_argument("--kasm-normal-user", required=True)
     parser.add_argument(
         "--training-project",
         default="",
@@ -166,13 +197,15 @@ def main():
     args = parser.parse_args()
 
     row = {
-        "ip": args.ip,
-        "student_password": os.environ.get("STUDENT_PASSWORD", ""),
         "kasm_url": args.kasm_url,
+        "ip": args.ip,
+        "nombre": args.name,
+        "student_user": args.student_user,
+        "student_password": os.environ.get("STUDENT_PASSWORD", ""),
         "kasm_admin_user": args.kasm_admin_user,
         "kasm_admin_password": os.environ.get("KASM_ADMIN_PASSWORD", ""),
-        "kasm_user_user": args.kasm_user_user,
-        "kasm_user_password": os.environ.get("KASM_USER_PASSWORD", ""),
+        "kasm_normal_user": args.kasm_normal_user,
+        "kasm_normal_user_password": os.environ.get("KASM_USER_PASSWORD", ""),
     }
 
     prefix = sanitize_prefix(args.training_project)
@@ -191,14 +224,14 @@ def main():
                 csv_path = os.path.join(args.csv_dir, explicit_name)
             else:
                 csv_path = resolve_csv_path(args.csv_dir, args.training_project, safe_csv_prefix(args.csv_prefix))
-            changed = update_row(csv_path, args.ip, row)
+            changed = update_row(csv_path, args.ip, args.name, row)
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
 
     if changed:
-        print(f"CHANGED row for {args.ip} updated in {csv_path}")
+        print(f"CHANGED row for {args.name} ({args.ip}) updated in {csv_path}")
     else:
-        print(f"OK row for {args.ip} already up to date in {csv_path}")
+        print(f"OK row for {args.name} ({args.ip}) already up to date in {csv_path}")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@
 #     -e kasm_docker_image_name=user/image:tag \
 #     -e kasm_workspace_image=user/image:tag
 - name: Create or delete a Kasm workspace
-  hosts: ubuntu
+  hosts: kasm
   vars:
     kasm_workspace_state: present
   roles:

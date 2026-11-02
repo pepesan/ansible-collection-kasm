@@ -17,10 +17,10 @@ colección y los roles de terceros (ver el [README](../README.es.md#instalación
 `<node_name>.<kasm_base_domain>`.
 
 ```ini
-[ubuntu]
+[kasm]
 203.0.113.10 node_name=kasmdemo
 
-[ubuntu:vars]
+[kasm:vars]
 ansible_user=root
 ansible_become=false
 ```
@@ -75,7 +75,7 @@ repositorio.
 | `.credentials/<host>-kasm-admin.pass` | Contraseña de `admin@kasm.local` |
 | `.credentials/<host>-kasm-user.pass` | Contraseña del `user@kasm.local` integrado |
 | `.credentials/<host>-kasm-user-<usuario>.pass` | Contraseña de un usuario creado con `kasm_user` |
-| `access-data-<nombre del fichero de inventario>.csv` | Una fila por servidor, ordenadas por nombre de host: IP, URL de Kasm y credenciales |
+| `access-data-<nombre del fichero de inventario>.csv` | Una fila por nodo; primera columna `kasm_url`, ordenadas por la URL completa: IP, nombre del inventario, usuario/contraseña de `student` y credenciales admin/usuario normal de Kasm |
 | `kasm-api-key-<ip>.json` | Copia de la clave de API persistente (se crea con el primer workspace) |
 
 Las contraseñas se generan **una sola vez** y se reutilizan en las ejecuciones siguientes. Para obtener otras nuevas, borre

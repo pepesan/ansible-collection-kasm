@@ -9,7 +9,7 @@
 # See the companion shell scripts in this directory for concrete examples
 # (default domain, custom domain, no TLS).
 - name: Install Kasm Workspaces end to end
-  hosts: ubuntu
+  hosts: kasm
   roles:
     - pepesan.kasm.docker
     - pepesan.kasm.student

@@ -88,14 +88,14 @@ Ubuntu Resolute"). La imagen tiene que estar en el Docker de Kasm antes de regis
 [`kasm_docker_image`](../kasm_docker_image/README.es.md) vaya primero:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.kasm_docker_image
     - pepesan.kasm.kasm_workspace
 ```
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:
@@ -107,7 +107,7 @@ Ubuntu Resolute"). La imagen tiene que estar en el Docker de Kasm antes de regis
 
 ```yaml
 # Ejemplo con imagen DinD (requiere privileged: true para dockerd interno)
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:
@@ -119,7 +119,7 @@ Ubuntu Resolute"). La imagen tiene que estar en el Docker de Kasm antes de regis
 
 ```yaml
 # Volver a borrarlo
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_workspace
       vars:

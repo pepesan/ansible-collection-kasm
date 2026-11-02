@@ -59,7 +59,7 @@ servidor, no de grupo, y se queda como tarea propia en
 Mantener vivas durante una semana las sesiones del grupo `Instructors` y permitir imprimir:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_group
       vars:
@@ -72,7 +72,7 @@ Dos políticas en un mismo play, una restrictiva para los alumnos y otra abierta
 los ajustes cuyo valor difiere, así que repetirlo no cambia nada):
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_group
       vars:

@@ -3,6 +3,16 @@
 All notable changes to the `pepesan.kasm` collection are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.2] - 2026-11-02
+
+### Changed
+- The default Ansible inventory group is now `kasm` instead of `ubuntu`.
+- The access CSV now starts with `kasm_url`, includes the inventory name and student username, and uses `kasm_normal_user` field names.
+- It uses `ansible_host` for `ip`, sorts by the full Kasm URL, migrates legacy headers, and upserts/deduplicates nodes by IP or inventory name.
+- Added behavioral tests for the CSV schema, legacy migration, identity matching, deduplication, URL ordering, and idempotency.
+
+- Added opt-in reboot recovery for an existing workspace session: inspect its known container ID and start that same container when Kasm reports `paused`/stopped and Docker says `created`/`exited`; no replacement session is requested.
+
 ## [0.0.1] - 2026-11-02
 
 ### Added

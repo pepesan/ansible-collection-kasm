@@ -72,7 +72,7 @@ Para la lista completa de variables de `geerlingguy.docker`, ver su
 Mínimo: Docker Engine y el plugin Compose, con los ajustes del kernel que necesita Kasm.
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
 ```
@@ -82,7 +82,7 @@ Docker para un usuario de CI. El usuario debe existir antes de poder entrar en e
 conecta Ansible) y `docker_prefer_ipv4: false` conserva la selección de direcciones de la distribución:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:

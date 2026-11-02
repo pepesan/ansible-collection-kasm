@@ -10,6 +10,6 @@
 #     -e kasm_uninstall_remove_letsencrypt_certs=true \
 #     -e node_name=kasmdemo -e kasm_base_domain=example.com
 - name: Uninstall Kasm
-  hosts: ubuntu
+  hosts: kasm
   roles:
     - pepesan.kasm.kasm_uninstall

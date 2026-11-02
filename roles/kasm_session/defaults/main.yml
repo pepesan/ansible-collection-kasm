@@ -2,8 +2,8 @@
 kasm_dir: /opt/kasm
 kasm_url: "https://127.0.0.1:443"
 
-# present: make sure the user has one running session of the workspace
-#          (launch it if missing, wait until it is "running").
+# present: make sure the user has a session of the workspace
+#          (launch it if missing, wait until "running" or Kasm-managed "paused").
 # absent:  destroy that session if it exists.
 kasm_session_state: present
 
@@ -16,8 +16,8 @@ kasm_session_user: "user@kasm.local"
 # 26.04)"). Required; see kasm_workspace to register one.
 kasm_session_workspace: ""
 
-# How long to wait for the session to reach "running" (a cold start of a
-# large image can take minutes), polling every kasm_session_poll_seconds.
+# How long to wait for the session to reach a usable status ("running" or
+# Kasm-managed "paused"), polling every kasm_session_poll_seconds.
 kasm_session_timeout_seconds: 600
 kasm_session_poll_seconds: 5
 
@@ -26,6 +26,12 @@ kasm_session_poll_seconds: 5
 # many seconds between attempts, before the role fails.
 kasm_session_launch_retries: 6
 kasm_session_launch_delay: 10
+
+# Re-start the existing workspace container if Kasm reports the session as
+# stopped/paused but its container is created/exited (e.g. after host reboot).
+# This targets the same container/kasm_id; it never creates a replacement.
+# Requires Docker access to the Kasm DinD container.
+kasm_session_recover_stopped: false
 
 # Reuses the persistent, ansible-managed API key bootstrapped by
 # kasm_workspace on this host (same file kasm_user reads). It needs the

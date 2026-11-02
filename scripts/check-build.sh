@@ -19,6 +19,19 @@ W="$(mktemp -d)"
 trap 'rm -rf "$W"' EXIT
 fail=0
 bad() { echo "FAIL: $*"; fail=1; }
+echo "== credentials CSV behavior tests"
+if python3 "$REPO/scripts/test_credentials_csv.py"; then
+  echo "   passed"
+else
+  bad "credentials CSV tests failed"
+fi
+echo "== collection version bump behavior tests"
+if python3 "$REPO/scripts/test_bump_version.py"; then
+  echo "   passed"
+else
+  bad "collection version bump tests failed"
+fi
+
 
 VERSION="$(python3 -c "import yaml,sys;print(yaml.safe_load(open('$REPO/galaxy.yml'))['version'])")"
 NAMESPACE="$(python3 -c "import yaml,sys;print(yaml.safe_load(open('$REPO/galaxy.yml'))['namespace'])")"

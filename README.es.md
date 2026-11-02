@@ -6,7 +6,7 @@ Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmwe
 usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo, workspaces, usuarios, sesiones y una
 desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
 
-> **Primera versión (0.0.1).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0.
+> **Versión actual de Galaxy (0.0.2).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0.
 > Es un proyecto independiente, sin relación con Kasm Technologies ni respaldado por ella.
 
 ## Qué incluye
@@ -70,10 +70,10 @@ Un inventario con un host por servidor Kasm. `node_name` decide el nombre DNS: e
 
 ```ini
 # inventory-mi-servidor
-[ubuntu]
+[kasm]
 203.0.113.10 node_name=kasmdemo
 
-[ubuntu:vars]
+[kasm:vars]
 ansible_user=root
 ansible_become=false
 ```
@@ -101,13 +101,13 @@ en las ejecuciones siguientes. Se guardan en la máquina que ejecuta Ansible, nu
 
 | Contraseña | Dónde consultarla | Fijarla con |
 |---|---|---|
-| Usuario Linux `student` | CSV de accesos y `.credentials/` | `-e student_password_plain=...` |
-| Kasm `admin@kasm.local` | CSV de accesos y `.credentials/` | `-e kasm_admin_password=...` |
-| Kasm integrado `user@kasm.local` | CSV de accesos y `.credentials/` | `-e kasm_default_user_password=...` |
+| Usuario Linux `student` | CSV (`student_user`, `student_password`) y `.credentials/` | `-e student_password_plain=...` |
+| Kasm `admin@kasm.local` | CSV (`kasm_admin_user`, `kasm_admin_password`) y `.credentials/` | `-e kasm_admin_password=...` |
+| Kasm integrado `user@kasm.local` | CSV (`kasm_normal_user`, `kasm_normal_user_password`) y `.credentials/` | `-e kasm_default_user_password=...` |
 | Usuarios de Kasm creados con `kasm_user` | solo `.credentials/` | `-e kasm_user_password=...` |
 
-El CSV es `access-data-<nombre del fichero de inventario>.csv` en el directorio desde el que se ejecuta (modo 600). **No
-suba nunca a un repositorio el CSV, `.credentials/` ni su inventario**: la IP del servidor también es un secreto. Detalles en
+El CSV es `access-data-<nombre del fichero de inventario>.csv` en el directorio de ejecución (modo 600), con `kasm_url` como
+primer campo y las filas ordenadas por esa URL. **No suba nunca a un repositorio el CSV, `.credentials/` ni su inventario**:
 [`kasm_credentials`](roles/kasm_credentials/README.es.md).
 
 ## Pruebas

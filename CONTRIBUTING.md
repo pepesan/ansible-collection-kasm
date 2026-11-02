@@ -76,3 +76,19 @@ Short imperative summary on the first line, then a body that says *why*. One log
 
 The version is in `galaxy.yml` and follows [Semantic Versioning](https://semver.org/). Add the change to `CHANGELOG.md`.
 Versions published on Ansible Galaxy cannot be overwritten, so build and check the tarball (`scripts/check-build.sh`) first.
+
+Run exactly one command to increment `galaxy.yml`:
+
+```bash
+python3 scripts/bump_version.py patch   # e.g. 0.0.1 -> 0.0.2
+python3 scripts/bump_version.py minor   # e.g. 0.0.1 -> 0.1.0
+python3 scripts/bump_version.py major   # e.g. 0.0.1 -> 1.0.0
+```
+
+The script edits only `galaxy.yml`. Update the `Unreleased` section in
+`CHANGELOG.md` manually; it does not commit, tag, push, or publish.
+
+Before tagging, run the local checks and dispatch the `Release` workflow
+manually for its dry run. A pushed `vX.Y.Z` tag matching `galaxy.yml` triggers
+the Galaxy publication and GitHub release; the workflow requires the
+repository's `GALAXY_API_KEY` secret.
