@@ -3,6 +3,34 @@
 All notable changes to the `pepesan.kasm` collection are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Per-host public DNS A/AAAA preflight before Kasm installation, with expected-IP validation and a final `site_kasm` summary of failed nodes.
+- Added a check-only inventory preflight playbook. It validates the `kasm`
+  group and unique, non-empty `node_name` values without connecting to
+  servers or copying inventory data into the repository.
+- Added standalone public DNS and trusted-HTTPS/TLS preflight with no host changes.
+- Added the `kasm_user` collection playbook and a DinD session smoke check.
+- Added an `examples/` dependency installer, temporary compatibility mapping for external `ubuntu` inventories, and lifecycle wrappers for workspaces, sessions, and Kasm users. Generated secrets stay outside the checkout.
+
+### Changed
+
+- Moved the safe Ansible configuration, sample inventory, and usage scripts to
+  `examples/`; real inventories must stay outside the repository.
+- Redact generated password, secret, and token fields from Kasm installer output before writing the remote log or returning
+  Ansible task output.
+- Preserve the source inventory basename for the access CSV; reject
+  `KASM_DATA_DIR` paths inside the checkout.
+- Resolve access CSV IPs from the inventory host despite `delegate_to: localhost`;
+  assert the value in the credentials-role Molecule scenario.
+- The `kasm_workspace` persistent API key was verified to support `kasm_user`
+  list/create/delete; remove obsolete manual-grant instructions.
+- Defer the nested Docker smoke check for paused sessions; rerun the playbook
+  after connecting to that same session.
+- Remove the Kasm container image from the host Docker cache during full
+  uninstall; retain the Let's Encrypt certificate by default.
+
 ## [0.0.2] - 2026-11-02
 
 ### Changed

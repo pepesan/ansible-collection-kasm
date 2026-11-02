@@ -71,7 +71,7 @@ yaml.safe_dump({'roles': d['roles']}, open('$W/roles.yml', 'w'))"
 "$V/ansible-galaxy" role install -r "$W/roles.yml" -p "$W/roles" >/dev/null 2>&1 || bad "the third-party roles do not install"
 
 echo "== playbooks by name and roles"
-for p in site_kasm kasm_workspace kasm_session kasm_uninstall; do
+for p in site_kasm preflight_kasm_inventory kasm_workspace kasm_session kasm_uninstall; do
   if "$V/ansible-playbook" -i localhost, "$NAMESPACE.$NAME.$p" --syntax-check 2>&1 | grep -q '^playbook:'; then
     echo "   $NAMESPACE.$NAME.$p ok"
   else

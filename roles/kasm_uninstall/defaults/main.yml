@@ -14,6 +14,10 @@ kasm_uninstall_remove_data: true
 # project's roles reads kasm_dir/compose.yaml directly.
 kasm_uninstall_remove_all: true
 
+# Match the tag used by the kasm role; override when the install used another.
+kasm_image_tag: "1.19.0-ls154"
+kasm_uninstall_remove_image: true
+
 # Real Let's Encrypt certs live on the HOST (not inside kasm_dir), issued by
 # geerlingguy.certbot. Off by default: removing them forces a brand new
 # certificate request on the next install, and Let's Encrypt rate-limits

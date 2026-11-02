@@ -1,0 +1,7 @@
+# Documentation-only address from TEST-NET-3. Never put a real host here.
+[kasm]
+203.0.113.10 node_name=kasmdemo
+
+[kasm:vars]
+ansible_user=root
+ansible_become=false

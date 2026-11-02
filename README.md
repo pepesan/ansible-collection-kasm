@@ -30,8 +30,9 @@ The roles are used by their fully qualified name, for example `pepesan.kasm.kasm
 ## Requirements
 
 - **Control node:** `ansible-core` 2.15 or newer and SSH access as `root` to the server.
-- **Server:** Ubuntu 24.04 or 26.04, or Debian 12 or 13 (all tested), with ports 80 and 443 free. For a real certificate,
-  `<node_name>.<kasm_base_domain>` must already resolve to the server.
+- **Server:** Ubuntu 24.04 or 26.04, or Debian 12 or 13 (all tested), with ports 80 and 443 free. With TLS enabled, `site_kasm`
+  checks public DNS A/AAAA records against the expected server address before any installation role runs. A failing host is
+  skipped while other hosts continue; the final play lists DNS failures.
 - **Collections:** `community.docker`, `community.general` and `ansible.posix` are installed automatically with this one.
 - **Third-party roles, which are NOT included** (a collection cannot depend on roles, so install them yourself):
 
@@ -43,6 +44,57 @@ The roles are used by their fully qualified name, for example `pepesan.kasm.kasm
 
   All the credit for those automations belongs to their author. This collection only uses them; it does not copy or
   modify their code. If one is missing, the role fails with a message that shows the command to install it.
+
+## Validate an inventory without deploying
+
+Run the check-only playbook against the specific inventory file you want to
+validate:
+
+```bash
+ansible-playbook -i /path/to/inventory pepesan.kasm.preflight_kasm_inventory
+```
+
+It requires the `kasm` group used by `site_kasm`, a non-empty `node_name` on
+each host, and unique node names. It runs on the control node only: no SSH
+connection, installation role, or inventory copy into this repository. This
+is a structural check only; it does not test DNS or host reachability.
+
+## DNS preflight before deployment
+
+With `kasm_letsencrypt_enabled: true` (the default), `site_kasm` runs the DNS
+preflight as its first pre-task, before any installation role. By default,
+`kasm_domain` is `<node_name>.<kasm_base_domain>`.
+
+The Ansible control node queries Cloudflare's public DNS-over-HTTPS resolver
+for both A and AAAA records. It needs outbound HTTPS access to
+`cloudflare-dns.com`. The validator combines the returned A/AAAA addresses:
+at least one must exist, and the resulting set must match
+`kasm_dns_expected_ips` exactly. An empty answer, an extra published address,
+a missing expected address, or resolver/network errors fail the preflight.
+
+`kasm_dns_expected_ips` defaults to `[ansible_host]`, falling back to
+`[inventory_hostname]`. Override it in the external inventory, `host_vars`, or
+`group_vars/kasm.yml` when Ansible connects to a private address but the public
+DNS points elsewhere:
+
+```yaml
+kasm_dns_expected_ips:
+  - "203.0.113.10"
+  - "2001:db8::10"
+```
+
+For a proxy or load balancer whose public addresses are not managed by this
+host, set `kasm_dns_expected_ips: []`. This still requires at least one public
+A/AAAA record, but disables address comparison.
+
+In `site_kasm`, a failed host skips its installation roles while other hosts
+continue. A final summary lists failed hosts and domains, then returns a
+non-zero playbook result. A passing host proceeds with the full installation:
+this is a deployment guard, not a DNS-only run. The separate
+`preflight_kasm_inventory` playbook checks inventory structure only; it does
+not query DNS. Disabling TLS skips the DNS preflight. The check does not verify
+port 80 or certificate issuance; Let's Encrypt's HTTP-01 challenge still
+requires port 80 to be available.
 
 ## Installation
 
@@ -65,11 +117,21 @@ roles:
 
 ## Quick start
 
-An inventory with one host per Kasm server. `node_name` decides the DNS name: the server is reached at
-`<node_name>.<kasm_base_domain>`.
+An inventory has one host per Kasm server. `node_name` decides the DNS name:
+the server is reached at `<node_name>.<kasm_base_domain>`.
+
+The [`examples/`](examples/) directory contains a safe `ansible.cfg`, placeholder
+inventory, dependency installer, and runnable wrappers. Its
+[README](examples/README.md) explains setup, external inventories, DNS/TLS,
+workspaces, sessions, users, and cleanup.
+
+```bash
+mkdir -p "$HOME/.config/pepesan-kasm"
+install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-my-server"
+```
 
 ```ini
-# inventory-my-server
+# Example content; keep the real inventory outside the repository.
 [kasm]
 203.0.113.10 node_name=kasmdemo
 
@@ -79,18 +141,23 @@ ansible_become=false
 ```
 
 ```bash
-# Install Kasm with a real certificate (https://kasmdemo.kasm.example.com)
-ansible-playbook -i inventory-my-server pepesan.kasm.site_kasm \
+# Run the playbooks with the external inventory.
+INVENTORY="$HOME/.config/pepesan-kasm/inventory-my-server"
+ansible-playbook -i "$INVENTORY" pepesan.kasm.site_kasm \
   -e kasm_base_domain=kasm.example.com \
   -e letsencrypt_email=you@example.com 2>&1 | tee install.log
 
 # Register a workspace (with no image given, the default one is used)
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
 ```
 
-The four playbooks of the collection can be run by name: `pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,
-`pepesan.kasm.kasm_session` and `pepesan.kasm.kasm_uninstall`. The first install takes several minutes (the slow part is
-Kasm's own installer); sending the output to a log with `tee` lets you follow it with `tail -f`.
+The collection playbooks can be run by name:
+`pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,
+`pepesan.kasm.kasm_session`, `pepesan.kasm.kasm_user`,
+`pepesan.kasm.kasm_uninstall`, `pepesan.kasm.preflight_kasm_inventory`
+(structure only), and `pepesan.kasm.preflight_kasm_dns_tls` (public DNS and
+trusted HTTPS/TLS only). The first installation takes several minutes; send
+output to a log with `tee` and follow it with `tail -f`.
 
 The full guide, with every variable and the troubleshooting table, is in [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
 

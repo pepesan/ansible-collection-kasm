@@ -3,11 +3,11 @@
 **Fully qualified name:** `pepesan.kasm.kasm_uninstall` (collection [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Removes a Kasm Workspaces install cleanly: stops and removes the `kasm` DinD
-container (and its nested networks/volumes), wipes the persisted app data
-(database, Kasm's self-signed certs, install marker, session profiles), and
-optionally removes the host's real Let's Encrypt certificate. Lets the
-[`kasm`](../kasm/README.md) role run again as a genuine fresh install
-afterwards, instead of hand-fixing a half-broken server over SSH.
+container (and its nested networks/volumes), wipes the persisted app data and
+removes the matching cached Docker image. It optionally removes the host's real
+Let's Encrypt certificate. Lets the [`kasm`](../kasm/README.md) role run again
+as a genuine fresh install afterwards, instead of hand-fixing a half-broken
+server over SSH.
 
 Not covered by any Galaxy role, and Kasm's own `install.sh` has no
 `--uninstall` flag — confirmed by grepping it directly on a live host.
@@ -19,6 +19,8 @@ Not covered by any Galaxy role, and Kasm's own `install.sh` has no
 | `kasm_dir` | `/opt/kasm` | Must match the same variable used by the `kasm` role |
 | `kasm_uninstall_remove_data` | `true` | Wipes `kasm_dir/data` (DB, Kasm's own certs, install marker, profiles) |
 | `kasm_uninstall_remove_all` | `true` | Also removes `kasm_dir` itself (`compose.yaml`, `init/`) — harmless, `kasm` recreates both |
+| `kasm_image_tag` | `1.19.0-ls154` | Must match the tag used by the `kasm` role |
+| `kasm_uninstall_remove_image` | `true` | Removes the Kasm image from the host Docker cache; set `false` to keep it |
 | `kasm_uninstall_remove_letsencrypt_certs` | `false` | Removes `/etc/letsencrypt/live/<kasm_domain>` on the host. Off by default: forces a brand new certificate request next install, and Let's Encrypt rate-limits that per domain |
 | `kasm_domain` | `{{ node_name }}.{{ kasm_base_domain }}` | Only read when `kasm_uninstall_remove_letsencrypt_certs` is true |
 

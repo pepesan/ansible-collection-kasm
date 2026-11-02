@@ -9,6 +9,11 @@ kasm_image_tag: "1.19.0-ls154"
 kasm_base_domain: "example.com"
 kasm_domain: "{{ node_name }}.{{ kasm_base_domain }}"
 
+# Public A/AAAA addresses expected for kasm_domain. By default this is the
+# host's Ansible address; override it for NAT or a public proxy. Set [] to
+# require DNS records without comparing their addresses.
+kasm_dns_expected_ips: "{{ [ansible_host | default(inventory_hostname)] }}"
+
 # geerlingguy.swap variables, prefixed with kasm_ and mapped explicitly to
 # the dependency's own variable names in meta/main.yml. Using the exact
 # same name here ("swap_file_size_mb: {{ swap_file_size_mb }}") would create

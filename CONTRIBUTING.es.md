@@ -10,7 +10,8 @@ debe acabar nunca en él.
 | Ruta | Qué es |
 |---|---|
 | `roles/<rol>/` | Un rol: `defaults/`, `tasks/`, `meta/`, `README.md` (inglés) y `README.es.md` (español) |
-| `playbooks/` | Los cuatro playbooks que trae la colección, más scripts de ejemplo e `inventory.example` |
+| `playbooks/` | Los playbooks que incluye la colección |
+| `examples/` | `ansible.cfg` seguro, inventario de ejemplo, instalador de dependencias y scripts de uso |
 | `docs/` | La guía de uso, en inglés y en español |
 | `scripts/` | `molecule.sh`, `check-build.sh` y `check-examples.sh` |
 | `galaxy.yml`, `meta/runtime.yml` | Metadatos de la colección |

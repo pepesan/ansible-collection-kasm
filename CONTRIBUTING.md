@@ -10,7 +10,8 @@ what must never end up in it.
 | Path | What it is |
 |---|---|
 | `roles/<role>/` | One role: `defaults/`, `tasks/`, `meta/`, `README.md` (English) and `README.es.md` (Spanish) |
-| `playbooks/` | The four playbooks shipped with the collection, plus example shell scripts and `inventory.example` |
+| `playbooks/` | The playbooks shipped with the collection |
+| `examples/` | Safe `ansible.cfg`, placeholder inventory, dependency installer, and usage wrappers |
 | `docs/` | The usage guide, in English and Spanish |
 | `scripts/` | `molecule.sh`, `check-build.sh` and `check-examples.sh` |
 | `galaxy.yml`, `meta/runtime.yml` | Collection metadata |

@@ -22,8 +22,7 @@ kasm_user_phone: ""
 # present: create the user if missing. absent: delete it if present.
 kasm_user_state: present
 
-# Reuses the same persistent, ansible-managed API key bootstrapped by
-# kasm_workspace if it already exists on this host, instead of minting a
-# second one. Requires "Users Create"/"Users Delete"/"Users View"
-# permissions granted to it — see the role README.
+# Reuses the persistent API key bootstrapped by kasm_workspace instead of
+# minting a second one. It was verified for user listing/creation/deletion
+# against Kasm 1.19.0; manually provided keys must have those permissions.
 kasm_user_api_key_file: "{{ kasm_dir }}/.kasm_api_key.json"

@@ -18,9 +18,9 @@
   ansible.builtin.fail:
     msg: >-
       {{ kasm_user_api_key_file }} does not exist on this host. Run
-      kasm_workspace at least once first (it bootstraps the persistent API
-      key), or create one manually and grant it "Users Create", "Users
-      Delete" and "Users View" permissions.
+      kasm_workspace at least once first to bootstrap the persistent API key,
+      or create one manually with "Users Create", "Users Delete" and
+      "Users View" permissions.
   when: not kasm_user_api_key_stat.stat.exists
 
 - name: Read the persistent API key

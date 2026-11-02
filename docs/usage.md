@@ -2,8 +2,9 @@
 
 [Español](usage.es.md) · [Back to the README](../README.md)
 
-Every command below uses the playbooks shipped with the collection, run by name (`pepesan.kasm.<playbook>`). Their
-source is in [`playbooks/`](../playbooks), together with thin shell wrappers (`01_...sh` to `07_...sh`) that you can copy.
+Every command below uses the collection playbooks by name (`pepesan.kasm.<playbook>`). Their source is in
+[`playbooks/`](../playbooks); [`examples/`](../examples) contains the safe config, sample inventory, dependency installer,
+and operational wrappers. See [`examples/README.md`](../examples/README.md) for setup and image lifecycle commands.
 
 > Always send the playbook output to a log with `tee`, so you can follow it with `tail -f` from another terminal.
 
@@ -24,8 +25,14 @@ ansible_user=root
 ansible_become=false
 ```
 
-With `kasm_base_domain=kasm.example.com` that host becomes `https://kasmdemo.kasm.example.com`. Keep real inventories in
-files named `inventory-*` (git-ignored on purpose): **a real server IP is a secret**.
+With `kasm_base_domain=kasm.example.com` that host becomes `https://kasmdemo.kasm.example.com`. Keep real inventories
+outside this repository, for example in `$HOME/.config/pepesan-kasm/inventory-my-server`. Create a private copy of the
+tracked placeholder:
+
+```bash
+mkdir -p "$HOME/.config/pepesan-kasm"
+install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-my-server"
+```
 
 **DNS.** For a real certificate, `<node_name>.<kasm_base_domain>` must already resolve to the server, ideally with no
 AAAA record pointing somewhere broken, and port 80 must be free for the HTTP-01 challenge.
@@ -33,7 +40,7 @@ AAAA record pointing somewhere broken, and port 80 must be free for the HTTP-01 
 ## 2. Install Kasm (`pepesan.kasm.site_kasm`)
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.site_kasm \
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.site_kasm \
   -e kasm_base_domain=kasm.example.com \
   -e letsencrypt_email=you@example.com 2>&1 | tee install.log
 ```
@@ -88,13 +95,13 @@ With no image given, the default one is used: `pepesan/core-ubuntu-resolute:1.20
 registered as "Core Ubuntu Resolute".
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
 ```
 
 Your own image (the name has spaces, so it goes in JSON form: a plain `-e var=a b` truncates at the first space):
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_workspace \
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.kasm_workspace \
   -e kasm_docker_image_name=user/image:1.0 \
   -e kasm_workspace_image=user/image:1.0 \
   -e '{"kasm_workspace_name": "My workspace"}' \
@@ -116,7 +123,7 @@ Images that run Docker inside the session (DinD) need `-e kasm_workspace_privile
 Deleting never uses a default image: say which one, or delete them all.
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_workspace \
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.kasm_workspace \
   -e kasm_workspace_state=absent -e kasm_workspace_image=user/image:1.0 \
   -e kasm_docker_image_name=user/image:1.0
 # every workspace:  -e kasm_workspace_state=absent -e kasm_workspace_clean_all=true
@@ -130,7 +137,7 @@ Starts (or, with `-e kasm_session_state=absent`, destroys) a user's session of a
 until it is running. If the session already exists, nothing is launched.
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_session \
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.kasm_session \
   -e kasm_session_workspace=pepesan/core-ubuntu-resolute:1.20 \
   -e kasm_session_user=user@kasm.local
 ```
@@ -154,7 +161,7 @@ changes settings whose value differs.
 ## 8. Uninstall (`pepesan.kasm.kasm_uninstall`)
 
 ```bash
-ansible-playbook -i inventory-my-server pepesan.kasm.kasm_uninstall 2>&1 | tee uninstall.log
+ansible-playbook -i "$HOME/.config/pepesan-kasm/inventory-my-server" pepesan.kasm.kasm_uninstall 2>&1 | tee uninstall.log
 ```
 
 **This deletes the Kasm data of the server.** By default it keeps the Let's Encrypt certificate

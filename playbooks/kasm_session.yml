@@ -20,3 +20,42 @@
   hosts: kasm
   roles:
     - pepesan.kasm.kasm_session
+  post_tasks:
+    - name: Verify the nested Docker daemon for a DinD workspace
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - kasm
+          - docker
+          - exec
+          - "{{ kasm_session_container_id }}"
+          - docker
+          - info
+      register: kasm_session_dind_check
+      retries: 12
+      delay: 5
+      until: kasm_session_dind_check.rc == 0
+      changed_when: false
+      no_log: true
+      when:
+        - kasm_session_state == 'present'
+        - "'dind' in kasm_session_workspace | lower"
+        - kasm_session_status == 'running'
+
+    - name: Report nested Docker readiness
+      ansible.builtin.debug:
+        msg: "Nested Docker is ready in the {{ kasm_session_workspace }} session."
+      when:
+        - kasm_session_state == 'present'
+        - "'dind' in kasm_session_workspace | lower"
+        - kasm_session_status == 'running'
+    - name: Report deferred nested Docker check for a paused session
+      ansible.builtin.debug:
+        msg: >-
+          The DinD session is paused; nested Docker verification is deferred.
+          Connect to this same session, then rerun the playbook to verify it.
+      when:
+        - kasm_session_state == 'present'
+        - "'dind' in kasm_session_workspace | lower"
+        - kasm_session_status == 'paused'

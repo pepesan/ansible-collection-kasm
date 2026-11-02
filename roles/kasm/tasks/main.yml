@@ -1,4 +1,10 @@
 ---
+
+- name: Validate public DNS before running Kasm role tasks
+  ansible.builtin.include_tasks: dns_preflight.yml
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - not (kasm_dns_preflight_done | default(false) | bool)
 # Third-party roles by Jeff Geerling (geerlingguy), not shipped with this
 # collection. They used to be meta dependencies (which always ran first); they
 # stay first here to keep the same order. Install them with:

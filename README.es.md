@@ -30,8 +30,9 @@ Los roles se usan por su nombre completo, por ejemplo `pepesan.kasm.kasm_workspa
 ## Requisitos
 
 - **Nodo de control:** `ansible-core` 2.15 o superior y acceso SSH como `root` al servidor.
-- **Servidor:** Ubuntu 24.04 o 26.04, o Debian 12 o 13 (todos probados), con los puertos 80 y 443 libres. Para un certificado real,
-  `<node_name>.<kasm_base_domain>` debe resolver ya al servidor.
+- **Servidor:** Ubuntu 24.04 o 26.04, o Debian 12 o 13 (todos probados), con los puertos 80 y 443 libres. Con TLS activado,
+  `site_kasm` comprueba los registros DNS públicos A/AAAA y la IP esperada antes de ejecutar cualquier rol de instalación.
+  Si falla un nodo, los demás continúan; el play final enumera los fallos DNS.
 - **Colecciones:** `community.docker`, `community.general` y `ansible.posix` se instalan solas con esta.
 - **Roles de terceros, que NO se incluyen** (una colección no puede depender de roles, así que hay que instalarlos aparte):
 
@@ -43,6 +44,59 @@ Los roles se usan por su nombre completo, por ejemplo `pepesan.kasm.kasm_workspa
 
   Todo el mérito de esas automatizaciones es de su autor. Esta colección solo las usa; no copia ni modifica su código. Si
   falta alguno, el rol falla con un mensaje que muestra el comando para instalarlo.
+
+## Validar un inventario sin desplegar
+
+Ejecute el playbook de comprobación únicamente contra el fichero de inventario
+que quiera validar:
+
+```bash
+ansible-playbook -i /ruta/al/inventario pepesan.kasm.preflight_kasm_inventory
+```
+
+Exige el grupo `kasm` que usa `site_kasm`, un `node_name` no vacío por host y
+nombres de nodo únicos. Solo se ejecuta en el nodo de control: no abre SSH, no
+ejecuta roles de instalación ni copia el inventario a este repositorio. Solo
+valida la estructura; no comprueba DNS ni la conectividad con los hosts.
+
+## Preflight DNS antes del despliegue
+
+Con `kasm_letsencrypt_enabled: true` (valor predeterminado), `site_kasm`
+ejecuta el preflight DNS como primera tarea previa, antes de cualquier rol de
+instalación. Por defecto, `kasm_domain` es
+`<node_name>.<kasm_base_domain>`.
+
+El nodo de control de Ansible consulta por HTTPS el DNS público de Cloudflare
+para obtener los registros A y AAAA. Necesita acceso HTTPS saliente a
+`cloudflare-dns.com`. El validador combina las direcciones A/AAAA obtenidas:
+debe existir al menos una y el conjunto resultante debe coincidir exactamente
+con `kasm_dns_expected_ips`. El preflight falla si la respuesta está vacía,
+hay una dirección pública adicional, falta una dirección esperada o se
+producen errores de red/resolución.
+
+Por defecto, `kasm_dns_expected_ips` usa `[ansible_host]` y, si no existe, usa
+`[inventory_hostname]`. Sobrescríbala en el inventario externo, `host_vars` o
+`group_vars/kasm.yml` si Ansible se conecta a una dirección privada pero el
+DNS público apunta a otra:
+
+```yaml
+kasm_dns_expected_ips:
+  - "203.0.113.10"
+  - "2001:db8::10"
+```
+
+Si las direcciones públicas pertenecen a un proxy o balanceador, defina
+`kasm_dns_expected_ips: []`. Se seguirá exigiendo que exista algún registro
+A/AAAA público, pero no se compararán las direcciones.
+
+En `site_kasm`, si un host falla se omiten sus roles de instalación, mientras
+los demás continúan. Al final se enumeran los hosts y dominios fallidos y el
+playbook termina con resultado no nulo. Si pasa, el host continúa con la
+instalación completa: este preflight es una barrera de despliegue, no una
+ejecución DNS aislada. El playbook `preflight_kasm_inventory` solo valida la
+estructura del inventario; no consulta DNS. Desactivar TLS omite el preflight
+DNS. La comprobación no verifica el puerto 80 ni la emisión del certificado;
+el challenge HTTP-01 de Let's Encrypt sigue necesitando el puerto 80 libre.
 
 ## Instalación
 
@@ -65,11 +119,21 @@ roles:
 
 ## Inicio rápido
 
-Un inventario con un host por servidor Kasm. `node_name` decide el nombre DNS: el servidor se alcanza en
-`<node_name>.<kasm_base_domain>`.
+Un inventario tiene un host por servidor Kasm. `node_name` decide el nombre DNS:
+el servidor se alcanza en `<node_name>.<kasm_base_domain>`.
+
+El directorio [`examples/`](examples/) contiene un `ansible.cfg` seguro, un
+inventario de ejemplo, un instalador de dependencias y scripts ejecutables. Su
+[README](examples/README.md) explica la preparación, inventarios externos,
+DNS/TLS, workspaces, sesiones, usuarios y limpieza.
+
+```bash
+mkdir -p "$HOME/.config/pepesan-kasm"
+install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-mi-servidor"
+```
 
 ```ini
-# inventory-mi-servidor
+# Contenido de ejemplo; mantenga el inventario real fuera del repositorio.
 [kasm]
 203.0.113.10 node_name=kasmdemo
 
@@ -79,18 +143,23 @@ ansible_become=false
 ```
 
 ```bash
-# Instalar Kasm con certificado real (https://kasmdemo.kasm.example.com)
-ansible-playbook -i inventory-mi-servidor pepesan.kasm.site_kasm \
+# Ejecute los playbooks con el inventario externo.
+INVENTARIO="$HOME/.config/pepesan-kasm/inventory-mi-servidor"
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.site_kasm \
   -e kasm_base_domain=kasm.example.com \
   -e letsencrypt_email=usted@example.com 2>&1 | tee install.log
 
 # Registrar un workspace (sin indicar imagen, se usa la de por defecto)
-ansible-playbook -i inventory-mi-servidor pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
 ```
 
-Los cuatro playbooks de la colección se lanzan por su nombre: `pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,
-`pepesan.kasm.kasm_session` y `pepesan.kasm.kasm_uninstall`. La primera instalación tarda varios minutos (lo lento es el
-instalador de Kasm); enviar la salida a un log con `tee` permite seguirla con `tail -f`.
+Los playbooks de la colección se lanzan por nombre:
+`pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,
+`pepesan.kasm.kasm_session`, `pepesan.kasm.kasm_user`,
+`pepesan.kasm.kasm_uninstall`, `pepesan.kasm.preflight_kasm_inventory`
+(solo estructura) y `pepesan.kasm.preflight_kasm_dns_tls` (solo DNS público y
+HTTPS/TLS de confianza). La primera instalación tarda varios minutos; envíe
+la salida a un log con `tee` y sígala con `tail -f`.
 
 La guía completa, con todas las variables y la tabla de problemas habituales, está en [docs/usage.es.md](docs/usage.es.md).
 

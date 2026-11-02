@@ -81,14 +81,16 @@ MAX_ATTEMPTS=3
 ATTEMPT=1
 while true; do
   echo -e "${YELLOW}>> Installing Kasm (attempt ${ATTEMPT}/${MAX_ATTEMPTS})...${NC}"
-  # install.sh can exit non-zero on a kasm_manager healthcheck timeout even when
-  # the installation actually completed fine. Capture the error and recover.
+# Kasm's installer prints generated credentials and tokens to stdout even in
+# non-interactive mode. Redact credential-like fields before they reach the
+# root-only install log or the Ansible task output.
   set +e
   bash /kasm_release/install.sh \
     --install-profile noninteractive \
     --admin-password "${ADMIN_PASSWORD}" \
-    --user-password "${USER_PASSWORD}"
-  INSTALL_EXIT=$?
+    --user-password "${USER_PASSWORD}" 2>&1 |
+    sed -u -E 's/^([[:space:]]*[[:alnum:] _-]*(password|token|secret)[[:space:]]*[:=][[:space:]]*).*/\1[REDACTED]/I'
+  INSTALL_EXIT=${PIPESTATUS[0]}
   set -e
 
   if [ $INSTALL_EXIT -ne 0 ]; then

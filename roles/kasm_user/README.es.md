@@ -16,14 +16,12 @@ de Kasm de esta colección sin nada de SQL.
 
 ## Requiere una API key existente
 
-Reutiliza la API key persistente de gestión por Ansible que ya genera
+Reutiliza la API key persistente de gestión por Ansible que genera
 [`kasm_workspace`](../kasm_workspace/README.es.md) (`{{ kasm_dir }}/.kasm_api_key.json`)
-en vez de crear una propia. Ejecuta `kasm_workspace` al menos una vez antes,
-o crea una key a mano y concédele los permisos **Users Create**, **Users
-Delete** y **Users View** (la key que crea `kasm_workspace` solo tiene
-permisos para imágenes/sesiones — ampliarla para gestión de usuarios es,
-por ahora, un paso manual único hasta unificar el bootstrap de permisos
-entre roles).
+en vez de crear una propia. Ejecuta `kasm_workspace` al menos una vez; su key
+se probó para listar, crear y borrar usuarios en Kasm 1.19.0. Si creas una key
+manualmente, concédele los permisos **Users Create**, **Users Delete** y
+**Users View**.
 
 ## Idempotencia
 
