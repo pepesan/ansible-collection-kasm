@@ -32,7 +32,7 @@ Pull an image into Kasm's Docker ahead of time, so the first session does not wa
 workspace:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_docker_image
       vars:
@@ -48,7 +48,7 @@ workspace:
 With no name given, the default image is pulled: `pepesan/core-ubuntu-resolute:1.20`.
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.kasm_docker_image
 ```
@@ -57,7 +57,7 @@ Remove an image. Delete the workspace and its sessions first, otherwise the role
 default image, so the name is required:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_docker_image
       vars:

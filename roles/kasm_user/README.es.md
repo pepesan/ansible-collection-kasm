@@ -50,7 +50,7 @@ Crear un usuario de Kasm. La contraseña es aleatoria por defecto (20 caracteres
 `.credentials/<host>-kasm-user-<usuario>.pass` en su máquina:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_user
       vars:
@@ -62,7 +62,7 @@ Crear un usuario de Kasm. La contraseña es aleatoria por defecto (20 caracteres
 Con una contraseña propia, guardada en un fichero de Ansible Vault:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_user
       vars:
@@ -73,7 +73,7 @@ Con una contraseña propia, guardada en un fichero de Ansible Vault:
 Borrar un usuario:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_user
       vars:

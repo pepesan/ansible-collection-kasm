@@ -104,7 +104,7 @@ CSV and in `.credentials/` on the machine running Ansible (see [`kasm_credential
 The full install, in the usual order (this is what the `pepesan.kasm.site_kasm` playbook does):
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
     - pepesan.kasm.student
@@ -120,7 +120,7 @@ The full install, in the usual order (this is what the `pepesan.kasm.site_kasm` 
 A test install with no certificate (Kasm keeps its self-signed one) and a smaller swap:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.docker
     - pepesan.kasm.kasm_credentials

@@ -37,7 +37,7 @@ the password itself (`linux_user_password_salt`, read via the same
 A CI user in the `docker` group, with a random password saved on your machine:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:
@@ -48,7 +48,7 @@ A CI user in the `docker` group, with a random password saved on your machine:
 A service account that cannot log in interactively, with a password you provide:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:

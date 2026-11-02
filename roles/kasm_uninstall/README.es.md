@@ -37,7 +37,7 @@ Eliminar Kasm y sus datos conservando el certificado de Let's Encrypt, para que 
 certificados que se emiten por nombre y semana:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_uninstall
 ```
@@ -45,7 +45,7 @@ certificados que se emiten por nombre y semana:
 **Esto borra los datos de Kasm del servidor.** Para forzar además un certificado nuevo en la próxima instalación:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_uninstall
       vars:

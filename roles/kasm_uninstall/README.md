@@ -35,7 +35,7 @@ Remove Kasm and its data, keeping the Let's Encrypt certificate so that reinstal
 certificates issued per name and week:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_uninstall
 ```
@@ -43,7 +43,7 @@ certificates issued per name and week:
 **This deletes the Kasm data of the server.** To also force a brand new certificate on the next install:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_uninstall
       vars:

@@ -1,6 +1,6 @@
 ---
-# Starts (or destroys) a running session of an already registered Kasm
-# workspace for a given user, through the public API.
+# Starts (or destroys) a Kasm session through the public API. Optional
+# recovery can start the same registered workspace container after a reboot.
 #
 # Usage:
 #   ansible-playbook -i <inventory> pepesan.kasm.kasm_session \
@@ -17,6 +17,6 @@
 #     -e '{"kasm_session_workspace": "Python Docker (Ubuntu 26.04)"}' \
 #     -e kasm_session_state=absent
 - name: Start or destroy a Kasm session
-  hosts: ubuntu
+  hosts: kasm
   roles:
     - pepesan.kasm.kasm_session

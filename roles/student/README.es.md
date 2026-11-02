@@ -28,7 +28,7 @@ leer ese mismo valor al escribir el CSV de accesos — mantén
 Mínimo: crea el usuario `student` con una contraseña aleatoria, en los grupos `docker` y `sudo`.
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - pepesan.kasm.student
 ```
@@ -36,7 +36,7 @@ Mínimo: crea el usuario `student` con una contraseña aleatoria, en los grupos 
 Un aula con su propio nombre de usuario, una contraseña que usted controla (guardada cifrada con Ansible Vault) y otros grupos:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.student
       vars:
@@ -45,9 +45,9 @@ Un aula con su propio nombre de usuario, una contraseña que usted controla (gua
         student_extra_groups: [docker]                           # sin sudo
 ```
 
-Dónde está la contraseña generada (cuando no fija una): `.credentials/<host>-<student_name>.pass` en la máquina que ejecuta
-Ansible, y la columna `student_password` del CSV de accesos cuando [`kasm_credentials`](../kasm_credentials/README.es.md) corre
-en el mismo play. Compruebe el usuario en el servidor:
+Dónde está la contraseña generada (cuando no se fija): `.credentials/<host>-<student_name>.pass` en la máquina que ejecuta
+Ansible, y las columnas `student_user` y `student_password` del CSV cuando [`kasm_credentials`](../kasm_credentials/README.es.md)
+se ejecuta en el mismo play. Compruebe el usuario en el servidor:
 
 ```bash
 id student

@@ -1,9 +1,8 @@
 ---
 # Pure ansible.builtin.uri against Kasm's public API (get_users, get_images,
-# get_kasms, request_kasm, get_kasm_status, destroy_kasm) — no direct
-# Postgres access, same approach as kasm_user. Runs on the Kasm host and talks
-# to the local API, authenticated with the persistent key kasm_workspace
-# creates.
+# get_kasms, request_kasm, get_kasm_status, destroy_kasm). Optional recovery
+# starts the existing container through the host's Docker CLI; never accesses
+# Postgres or requests a replacement when an existing session is found.
 #
 # Facts exported on success (state present):
 #   kasm_session_id            the session's kasm_id
@@ -124,7 +123,7 @@
          ~ kasm_session_image_hex[12:16] ~ '-' ~ kasm_session_image_hex[16:20] ~ '-'
          ~ kasm_session_image_hex[20:32] }}
 
-- name: List running sessions
+- name: List existing sessions
   ansible.builtin.uri:
     url: "{{ kasm_url }}/api/public/get_kasms"
     method: POST
@@ -203,7 +202,119 @@
   no_log: true
   when: kasm_session_state == 'present'
 
-- name: Wait until the session is running
+- name: Check whether an existing session needs recovery
+  ansible.builtin.uri:
+    url: "{{ kasm_url }}/api/public/get_kasm_status"
+    method: POST
+    body_format: json
+    body:
+      api_key: "{{ kasm_session_api_key }}"
+      api_key_secret: "{{ kasm_session_api_key_secret }}"
+      user_id: "{{ kasm_session_user_id }}"
+      kasm_id: "{{ kasm_session_id }}"
+    validate_certs: false
+    status_code: 200
+  register: kasm_session_recovery_status
+  changed_when: false
+  no_log: true
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+
+- name: Detect Kasm's stopped or paused status response
+  ansible.builtin.set_fact:
+    kasm_session_recovery_required: >-
+      {{ (kasm_session_recovery_status.json.error_message | default('')) == 'Kasm is not running'
+         or kasm_session_recovery_status.json.get(
+           'operational_status',
+           kasm_session_recovery_status.json.get('kasm', {}).get('operational_status', '')) == 'paused' }}
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+
+- name: Require a known container id before recovering the session
+  ansible.builtin.fail:
+    msg: >-
+      Kasm reports the existing session is stopped or paused, but get_kasms
+      did not provide its container_id. Refusing to create a replacement
+      session or guess which container to start.
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+    - kasm_session_recovery_required | bool
+    - kasm_session_existing.container_id | default('') | length == 0
+
+- name: Inspect the existing workspace container
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - kasm
+      - docker
+      - inspect
+      - --format
+      - "{{ '{{.State.Status}}' }}"
+      - "{{ kasm_session_existing.container_id }}"
+  register: kasm_session_container_inspect
+  changed_when: false
+  failed_when: false
+  no_log: true
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+    - kasm_session_recovery_required | bool
+    - kasm_session_existing.container_id | default('') | length > 0
+
+- name: Fail safely if the existing workspace container cannot be inspected
+  ansible.builtin.fail:
+    msg: >-
+      Could not inspect the existing Kasm workspace container. No replacement
+      session was created. Check Docker access to the Kasm DinD container.
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+    - kasm_session_recovery_required | bool
+    - kasm_session_container_inspect.rc | default(0) != 0
+
+- name: Reject unsupported existing container states
+  ansible.builtin.fail:
+    msg: >-
+      The existing Kasm container is in state
+      '{{ kasm_session_container_inspect.stdout | default('unknown') }}';
+      automatic recovery starts only containers in 'created' or 'exited'
+      state; a running or Kasm-paused container is left untouched. The session was not replaced.
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+    - kasm_session_recovery_required | bool
+    - kasm_session_container_inspect.stdout | default('') not in ['created', 'exited', 'running', 'paused']
+
+- name: Start the existing workspace container
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - kasm
+      - docker
+      - start
+      - "{{ kasm_session_existing.container_id }}"
+  register: kasm_session_container_start
+  changed_when: true
+  no_log: true
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_stopped | bool
+    - kasm_session_existing | length > 0
+    - kasm_session_recovery_required | bool
+    - kasm_session_container_inspect.stdout | default('') in ['created', 'exited']
+
+- name: Wait until the session is running or paused
   ansible.builtin.uri:
     url: "{{ kasm_url }}/api/public/get_kasm_status"
     method: POST
@@ -216,7 +327,10 @@
     validate_certs: false
     status_code: 200
   register: kasm_session_status_result
-  until: (kasm_session_status_result.json.kasm.operational_status | default('')) == 'running'
+  until: >-
+    (kasm_session_status_result.json.get(
+      'operational_status',
+      kasm_session_status_result.json.get('kasm', {}).get('operational_status', ''))) in ['running', 'paused']
   retries: "{{ (kasm_session_timeout_seconds | int / kasm_session_poll_seconds | int) | round(0, 'ceil') | int }}"
   delay: "{{ kasm_session_poll_seconds }}"
   changed_when: false
@@ -225,8 +339,13 @@
 
 - name: Export the session facts
   ansible.builtin.set_fact:
-    kasm_session_status: "{{ kasm_session_status_result.json.kasm.operational_status }}"
-    kasm_session_container_id: "{{ kasm_session_status_result.json.kasm.container_id | default('') }}"
+    kasm_session_status: >-
+      {{ kasm_session_status_result.json.get(
+           'operational_status',
+           kasm_session_status_result.json.get('kasm', {}).get('operational_status', 'unknown')) }}
+    kasm_session_container_id: >-
+      {{ kasm_session_status_result.json.get('kasm', {}).get(
+           'container_id', kasm_session_existing.container_id | default('')) }}
   no_log: true
   when: kasm_session_state == 'present'
 

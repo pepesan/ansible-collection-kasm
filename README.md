@@ -6,7 +6,7 @@ Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/)
 Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
 clean uninstall. Every step is idempotent: running it again changes nothing.
 
-> **First release (0.0.1).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0.
+> **Current release (0.0.2).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0.
 > This is an independent project, not affiliated with or endorsed by Kasm Technologies.
 
 ## What is inside
@@ -70,10 +70,10 @@ An inventory with one host per Kasm server. `node_name` decides the DNS name: th
 
 ```ini
 # inventory-my-server
-[ubuntu]
+[kasm]
 203.0.113.10 node_name=kasmdemo
 
-[ubuntu:vars]
+[kasm:vars]
 ansible_user=root
 ansible_become=false
 ```
@@ -101,13 +101,13 @@ later runs. They are kept on the machine that runs Ansible, never on a repositor
 
 | Password | Where to find it | Fix one with |
 |---|---|---|
-| Linux user `student` | access CSV and `.credentials/` | `-e student_password_plain=...` |
-| Kasm `admin@kasm.local` | access CSV and `.credentials/` | `-e kasm_admin_password=...` |
-| Kasm built-in `user@kasm.local` | access CSV and `.credentials/` | `-e kasm_default_user_password=...` |
+| Linux user `student` | access CSV (`student_user`, `student_password`) and `.credentials/` | `-e student_password_plain=...` |
+| Kasm `admin@kasm.local` | access CSV (`kasm_admin_user`, `kasm_admin_password`) and `.credentials/` | `-e kasm_admin_password=...` |
+| Kasm built-in `user@kasm.local` | access CSV (`kasm_normal_user`, `kasm_normal_user_password`) and `.credentials/` | `-e kasm_default_user_password=...` |
 | Kasm users created with `kasm_user` | `.credentials/` only | `-e kasm_user_password=...` |
 
-The CSV is `access-data-<inventory file name>.csv` in the directory you run from (mode 600). **Never commit the CSV,
-`.credentials/` or your inventory**: the server IP is a secret too. Details in
+The CSV is `access-data-<inventory file name>.csv` in the directory you run from (mode 600), with `kasm_url` first and rows
+sorted by that URL. **Never commit the CSV, `.credentials/` or your inventory**: the server IP is a secret too. Details in
 [`kasm_credentials`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_credentials/README.md).
 
 ## Testing

@@ -3,13 +3,16 @@
 **Nombre completo:** `pepesan.kasm.kasm_credentials` (colección [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Genera contraseñas aleatorias de admin/user de Kasm por host (persistidas en
-el nodo de control para que ejecuciones repetidas las reutilicen) y registra
-las credenciales de este host en un CSV compartido con el nombre del
-inventario usado (`access-data-<inventario>.csv`, p. ej. `-i inventory-my-course`
-→ `access-data-inventory-my-course.csv`), una fila por IP. Lo usa
-[`kasm`](../kasm/README.es.md) y lee el mismo fichero de
-contraseña de `student` que genera [`student`](../student/README.es.md),
-para incluirla en la misma fila del CSV.
+el nodo de control para reutilizarlas) y registra las credenciales en el CSV
+del inventario (`access-data-<inventario>.csv`), una fila por nodo. Lo usa
+[`kasm`](../kasm/README.es.md) y lee el mismo fichero de contraseña `student`
+que genera [`student`](../student/README.es.md).
+
+Las columnas, en este orden, son `kasm_url`, `ip`, `nombre`, `student_user`,
+`student_password`, `kasm_admin_user`, `kasm_admin_password`,
+`kasm_normal_user`, `kasm_normal_user_password`. Las filas se ordenan en orden
+ascendente por la URL completa de Kasm. `ip` procede de `ansible_host` y
+`nombre` es el alias del inventario.
 
 No cubierto por ningún rol o collection de Galaxy — es contabilidad
 específica de Kasm sin equivalente upstream.
@@ -20,9 +23,9 @@ Todo está en la máquina que ejecuta Ansible (nunca en el repositorio):
 
 | Contraseña | Dónde | Fijar una concreta con |
 |---|---|---|
-| Usuario Linux `student` | CSV de accesos (`student_password`) y `.credentials/<host>-<student_name>.pass` | `-e student_password_plain=...` |
-| Kasm `admin@kasm.local` | CSV de accesos (`kasm_admin_password`) y `.credentials/<host>-kasm-admin.pass` | `-e kasm_admin_password=...` |
-| Kasm integrado `user@kasm.local` | CSV de accesos (columna `kasm_user_password`) y `.credentials/<host>-kasm-user.pass` | `-e kasm_default_user_password=...` |
+| Usuario Linux `student` | CSV (`student_user`, `student_password`) y `.credentials/<host>-<student_name>.pass` | `-e student_password_plain=...` |
+| Kasm `admin@kasm.local` | CSV (`kasm_admin_user`, `kasm_admin_password`) y `.credentials/<host>-kasm-admin.pass` | `-e kasm_admin_password=...` |
+| Kasm integrado `user@kasm.local` | CSV (`kasm_normal_user`, `kasm_normal_user_password`) y `.credentials/<host>-kasm-user.pass` | `-e kasm_default_user_password=...` |
 | Usuarios de Kasm creados con [`kasm_user`](../kasm_user/README.es.md) | solo `.credentials/<host>-kasm-user-<usuario>.pass` (el CSV tiene una fila por host) | `-e kasm_user_password=...` |
 
 Cualquiera se puede pasar como parámetro; si no, se genera una aleatoria una sola vez y se reutiliza en ejecuciones
@@ -44,19 +47,16 @@ posteriores. El CSV recoge el valor realmente en uso, también cuando es fijo.
 Requiere que quien llame al rol fije `kasm_domain` (normalmente lo aporta
 `kasm`).
 
-## Orden de las filas
-
-Las filas se ordenan por el nombre de host de la URL de Kasm en orden natural (`nodo2` antes que `nodo10`,
-`nodo30` antes que `nodo31`), desempatando por IP. Un CSV existente y desordenado se reordena en la siguiente ejecución.
+Las filas se ordenan en orden ascendente por la URL completa de Kasm,
+desempatando por IP y nombre del inventario.
 
 ## Idempotencia
 
-`files/update_credentials_csv.py` compara la fila que va a escribir contra
-lo que ya hay para la IP de este host; solo reescribe el fichero (e imprime
-`CHANGED ...`) cuando algo difiere de verdad, imprimiendo
-`OK ... already up to date` en caso contrario. El `changed_when` de la task
-de Ansible lee esa marca, así que una segunda ejecución con las mismas
-entradas no reporta cambios.
+`files/update_credentials_csv.py` identifica el nodo por IP o nombre del
+inventario, migra las columnas antiguas, elimina filas duplicadas y ordena
+por URL de Kasm. Solo reescribe el CSV si cambian el esquema o las filas
+canónicas; imprime `CHANGED ...` si lo hace y `OK ... already up to date` si
+no hay cambios. La tarea de Ansible usa esa marca en `changed_when`.
 
 ## Concurrencia
 
@@ -72,7 +72,7 @@ mismo nodo de control nunca corrompen el fichero ni pierden una fila.
 Generar las contraseñas y registrarlas en el CSV de accesos (es lo que hace el playbook de instalación antes de `kasm`):
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_credentials
       vars:
@@ -84,7 +84,7 @@ Fijar usted algunas contraseñas y poner al CSV el nombre del curso, para que lo
 fichero:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_credentials
       vars:
@@ -97,6 +97,6 @@ Vea el resultado sin imprimir ninguna contraseña:
 
 ```bash
 head -1 access-data-*.csv                 # las columnas
-cut -d, -f1,3 access-data-*.csv           # IP y URL de Kasm de cada servidor, ordenados por nombre de host
+cut -d, -f1-3 access-data-*.csv           # URL de Kasm, IP y nombre del inventario
 ls -l .credentials/                       # un fichero por contraseña, modo 600
 ```

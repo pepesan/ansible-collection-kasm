@@ -55,7 +55,7 @@ stays as its own task in [`kasm`](../kasm/README.md) instead of living here.
 Keep sessions of the `Instructors` group alive for a week and allow printing:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_group
       vars:
@@ -68,7 +68,7 @@ Two policies in one play, a locked-down one for students and an open one for sta
 whose value differs, so repeating it changes nothing):
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.kasm_group
       vars:

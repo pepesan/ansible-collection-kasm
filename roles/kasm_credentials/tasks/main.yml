@@ -12,10 +12,12 @@
   ansible.builtin.command: >
     python3 {{ (role_path ~ '/files/update_credentials_csv.py') | quote }}
     --csv-dir {{ kasm_credentials_csv_dir | quote }}
-    --ip {{ inventory_hostname }}
-    --kasm-url https://{{ kasm_domain }}
-    --kasm-admin-user {{ kasm_credentials_admin_user }}
-    --kasm-user-user {{ kasm_credentials_user_user }}
+    --ip {{ (ansible_host | default(inventory_hostname)) | quote }}
+    --name {{ inventory_hostname | quote }}
+    --student-user {{ kasm_credentials_student_name | quote }}
+    --kasm-url {{ ('https://' ~ kasm_domain) | quote }}
+    --kasm-admin-user {{ kasm_credentials_admin_user | quote }}
+    --kasm-normal-user {{ kasm_credentials_user_user | quote }}
     --training-project "{{ kasm_training_project }}"
     --csv-prefix {{ kasm_credentials_csv_prefix | quote }}
     {{ ('--csv-name ' ~ (kasm_credentials_csv_name | quote)) if kasm_credentials_csv_name else '' }}
@@ -42,5 +44,7 @@
 
 - name: Report where the credentials were saved
   ansible.builtin.debug:
-    msg: "Access credentials saved to {{ kasm_credentials_csv_found.files[0].path }} (row IP {{ inventory_hostname }})"
+    msg: >-
+      Access credentials saved to {{ kasm_credentials_csv_found.files[0].path }}
+      (node {{ inventory_hostname }}, IP {{ ansible_host | default(inventory_hostname) }})
   when: kasm_credentials_csv_found.files | length > 0

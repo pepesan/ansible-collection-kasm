@@ -38,7 +38,7 @@ realmente idempotentes.
 Un usuario de CI en el grupo `docker`, con una contraseña aleatoria guardada en su máquina:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:
@@ -49,7 +49,7 @@ Un usuario de CI en el grupo `docker`, con una contraseña aleatoria guardada en
 Una cuenta de servicio sin acceso interactivo, con una contraseña que usted aporta:
 
 ```yaml
-- hosts: ubuntu
+- hosts: kasm
   roles:
     - role: pepesan.kasm.linux_user
       vars:
