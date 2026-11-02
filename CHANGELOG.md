@@ -3,7 +3,7 @@
 All notable changes to the `pepesan.kasm` collection are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
-## [0.0.1] - unreleased
+## [0.0.1] - 2026-11-02
 
 ### Added
 - First version of the collection: roles `docker`, `kasm`, `kasm_credentials`,
