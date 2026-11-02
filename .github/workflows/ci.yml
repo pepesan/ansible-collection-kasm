@@ -70,8 +70,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
+        if: >-
+          ${{ github.event_name == 'pull_request'
+            || github.actor != 'pepesan'
+            || !contains(fromJSON('["main", "develop"]'), github.ref_name)
+            || !vars.LORIEN_RUNNER_LABEL }}
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Create Python environment on the rootless runner
+        if: >-
+          ${{ github.event_name != 'pull_request'
+            && github.actor == 'pepesan'
+            && contains(fromJSON('["main", "develop"]'), github.ref_name)
+            && vars.LORIEN_RUNNER_LABEL }}
+        run: |
+          venv="$(mktemp -d "$RUNNER_TEMP/kasm-venv.XXXXXX")"
+          python3.13 -m venv "$venv"
+          echo "$venv/bin" >> "$GITHUB_PATH"
       - name: Install the tools
         run: pip install ansible-core==2.21.5 molecule==26.10.0 molecule-plugins[docker] pyyaml
       - name: Install the collections
