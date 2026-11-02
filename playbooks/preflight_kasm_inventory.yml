@@ -1,0 +1,45 @@
+---
+- name: Validate an inventory for pepesan.kasm without deployment
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kasm_inventory_hosts: "{{ groups.get('kasm', []) }}"
+    kasm_inventory_groups: "{{ groups.keys() | difference(['all', 'ungrouped']) | list }}"
+    kasm_inventory_node_names: >-
+      {{ kasm_inventory_hosts | map('extract', hostvars)
+         | map(attribute='node_name', default='') | list }}
+  tasks:
+    - name: Require hosts in the collection's default inventory group
+      ansible.builtin.assert:
+        that:
+          - kasm_inventory_hosts | length > 0
+        fail_msg: >-
+          This inventory has no hosts in the 'kasm' group targeted by
+          pepesan.kasm.site_kasm. Inventory groups found:
+          {{ kasm_inventory_groups | join(', ') | default('none', true) }}.
+          Keep the inventory outside the collection repository and use the
+          'kasm' group for deployment targets.
+
+    - name: Require a non-empty node_name for every Kasm host
+      ansible.builtin.assert:
+        that:
+          - item is string
+          - item | length > 0
+        fail_msg: >-
+          Every host in the 'kasm' group must define a non-empty node_name.
+      loop: "{{ kasm_inventory_node_names }}"
+      loop_control:
+        label: "{{ item | default('missing node_name', true) }}"
+
+    - name: Require unique node names
+      ansible.builtin.assert:
+        that:
+          - kasm_inventory_node_names | unique | length == kasm_inventory_hosts | length
+        fail_msg: >-
+          node_name values in the 'kasm' inventory group must be unique.
+
+    - name: Report inventory validation success
+      ansible.builtin.debug:
+        msg: >-
+          Inventory preflight passed for {{ kasm_inventory_hosts | length }}
+          Kasm host(s). No SSH connection or deployment task was run.

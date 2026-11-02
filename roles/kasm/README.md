@@ -39,6 +39,20 @@ environments, disable explicitly:
 
 Kasm then stays reachable over its self-signed certificate.
 
+## Public DNS preflight
+
+With TLS enabled, the role queries Cloudflare's public DNS-over-HTTPS resolver
+from the Ansible control node before making installation changes. It checks
+both A and AAAA records against `kasm_dns_expected_ips`. The default is
+`ansible_host` (or `inventory_hostname`); override it with the server's public
+address(es) when SSH uses a private address. Set it to `[]` behind a proxy or
+load balancer to require public DNS records without comparing their addresses.
+
+The control node needs outbound HTTPS access to `cloudflare-dns.com`. With
+`site_kasm`, the check runs before any installation role; only a failing host
+stops, while the other hosts continue. A final play lists failed host names
+and domains. Disabling `kasm_letsencrypt_enabled` skips the check.
+
 ## How the install is verified (and retried)
 
 `files/fix_and_install_kasm.sh` runs Kasm's `install.sh` inside the container.
@@ -76,14 +90,16 @@ If you meet that state on a host, delete the marker and re-run.
 | `kasm_base_domain` | `example.com` (placeholder, no sane default outside this project) | Base domain; set explicitly per deployment |
 | `kasm_domain` | `{{ node_name }}.{{ kasm_base_domain }}` | Full per-node domain |
 | `kasm_letsencrypt_enabled` | `true` | Toggle real TLS on/off |
+| `kasm_dns_expected_ips` | `{{ [ansible_host | default(inventory_hostname)] }}` | Expected public A/AAAA address set; override for NAT/proxy. `[]` checks that records exist without comparing addresses |
 | `letsencrypt_email` | `admin@{{ kasm_base_domain }}` | Certbot account email (Let's Encrypt sends expiry notices there): set a real one |
 | `kasm_admin_password` / `kasm_default_user_password` | — | Provided by [`kasm_credentials`](../kasm_credentials/README.md); run that role first or set these yourself |
 
 ## Install log
 
-The install script writes its progress to `<kasm_dir>/data/opt/kasm_deploy.log` on the server (the role suggests following it
-with `tail -f`). The log is readable by root only (mode 600) and does **not** contain the passwords: those stay in the access
-CSV and in `.credentials/` on the machine running Ansible (see [`kasm_credentials`](../kasm_credentials/README.md)).
+The install script writes progress to `<kasm_dir>/data/opt/kasm_deploy.log` on the server (follow it with `tail -f`). The log
+is readable by root only (mode 600). Kasm's upstream installer emits generated credentials; `fix_and_install_kasm.sh` redacts
+`password`, `secret`, and `token` key/value fields before they reach the log or Ansible output. Passwords remain in the access
+CSV and in `.credentials/` on the Ansible control node (see [`kasm_credentials`](../kasm_credentials/README.md)).
 
 ## Dependencies
 

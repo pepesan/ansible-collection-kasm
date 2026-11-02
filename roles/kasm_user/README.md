@@ -18,12 +18,10 @@ SQL.
 
 Reuses the persistent, ansible-managed API key bootstrapped by
 [`kasm_workspace`](../kasm_workspace/README.md) (`{{ kasm_dir }}/.kasm_api_key.json`)
-rather than minting its own. Run `kasm_workspace` at least once first, or
-create a key manually and grant it the **Users Create**, **Users Delete**
-and **Users View** permissions (the key `kasm_workspace` creates is only
-granted permissions for images/sessions — extending it for user management
-is a manual one-time step until that permission bootstrap is unified across
-roles).
+rather than minting its own. Run `kasm_workspace` at least once first; its key
+successfully supported user listing, creation, and deletion against Kasm
+1.19.0. If you create a key manually, grant it the **Users Create**, **Users
+Delete**, and **Users View** permissions.
 
 ## Idempotency
 

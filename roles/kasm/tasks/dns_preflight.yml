@@ -1,0 +1,107 @@
+---
+- name: Query public DNS before modifying this host
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - not (kasm_dns_preflight_done | default(false) | bool)
+  block:
+    - name: Query Cloudflare public DNS for A records
+      ansible.builtin.uri:
+        url: "https://cloudflare-dns.com/dns-query?name={{ kasm_domain | urlencode }}&type=A"
+        method: GET
+        headers:
+          accept: application/dns-json
+        return_content: true
+        status_code: 200
+        timeout: 10
+      delegate_to: localhost
+      become: false
+      register: kasm_dns_a
+      changed_when: false
+
+    - name: Query Cloudflare public DNS for AAAA records
+      ansible.builtin.uri:
+        url: "https://cloudflare-dns.com/dns-query?name={{ kasm_domain | urlencode }}&type=AAAA"
+        method: GET
+        headers:
+          accept: application/dns-json
+        return_content: true
+        status_code: 200
+        timeout: 10
+      delegate_to: localhost
+      become: false
+      register: kasm_dns_aaaa
+      changed_when: false
+
+    - name: Collect the public A and AAAA addresses
+      ansible.builtin.set_fact:
+        kasm_dns_preflight_domain: "{{ kasm_domain }}"
+        kasm_dns_resolved_ips: >-
+          {{ (((kasm_dns_a.content | from_json).Answer | default([])
+               | selectattr('type', 'equalto', 1) | map(attribute='data') | list)
+             + ((kasm_dns_aaaa.content | from_json).Answer | default([])
+               | selectattr('type', 'equalto', 28) | map(attribute='data') | list))
+             | unique | sort }}
+      changed_when: false
+
+    - name: Record the DNS preflight result
+      ansible.builtin.set_fact:
+        kasm_dns_preflight_failed: >-
+          {{ (kasm_dns_resolved_ips | length == 0)
+             or (kasm_dns_expected_ips | length > 0
+                 and ((kasm_dns_resolved_ips | difference(kasm_dns_expected_ips) | length > 0)
+                      or (kasm_dns_expected_ips | difference(kasm_dns_resolved_ips) | length > 0))) }}
+        kasm_dns_preflight_error: >-
+          {{ 'public DNS returned no A or AAAA records'
+             if kasm_dns_resolved_ips | length == 0
+             else 'public DNS addresses do not match kasm_dns_expected_ips' }}
+      changed_when: false
+  rescue:
+    - name: Record a public DNS resolver failure for the final summary
+      ansible.builtin.set_fact:
+        kasm_dns_preflight_failed: true
+        kasm_dns_preflight_domain: "{{ kasm_domain }}"
+        kasm_dns_preflight_error: "could not query Cloudflare public DNS over HTTPS from the Ansible control node"
+      changed_when: false
+
+- name: Fail this host when its public DNS preflight is unsuccessful
+  ansible.builtin.fail:
+    msg: >-
+      DNS preflight failed for {{ kasm_dns_preflight_domain }}:
+      {{ kasm_dns_preflight_error }}. No installation roles ran for this host.
+      Check the public A/AAAA records and, for NAT or a proxy, set
+      kasm_dns_expected_ips to the public addresses (or [] to check record
+      existence only).
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - kasm_dns_preflight_failed | default(false) | bool
+    - not (kasm_dns_preflight_defer_failure | default(false) | bool)
+
+- name: Report this host's DNS failure for the global summary
+  ansible.builtin.debug:
+    msg: >-
+      DNS preflight failed for {{ kasm_dns_preflight_domain }}:
+      {{ kasm_dns_preflight_error }}. This host's install roles will be
+      skipped; other hosts will continue and the final summary will list it.
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - kasm_dns_preflight_failed | default(false) | bool
+    - kasm_dns_preflight_defer_failure | default(false) | bool
+
+- name: Mark the DNS preflight complete
+  ansible.builtin.set_fact:
+    kasm_dns_preflight_done: true
+  changed_when: false
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - not (kasm_dns_preflight_failed | default(false) | bool)
+
+- name: Report successful public DNS validation
+  ansible.builtin.debug:
+    msg: >-
+      DNS preflight passed for {{ kasm_dns_preflight_domain }}:
+      {{ 'public A/AAAA records exist; address comparison is disabled'
+         if kasm_dns_expected_ips | length == 0
+         else 'public A/AAAA records match kasm_dns_expected_ips' }}.
+  when:
+    - kasm_letsencrypt_enabled | bool
+    - not (kasm_dns_preflight_failed | default(false) | bool)

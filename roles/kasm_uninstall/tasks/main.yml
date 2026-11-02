@@ -13,6 +13,12 @@
     remove_volumes: true
   when: kasm_uninstall_compose_file.stat.exists
 
+- name: Remove the Kasm container image from the host
+  community.docker.docker_image:
+    name: "lscr.io/linuxserver/kasm:{{ kasm_image_tag }}"
+    state: absent
+  when: kasm_uninstall_remove_image | bool
+
 - name: Remove the persisted Kasm data (database, certs, install marker, profiles)
   ansible.builtin.file:
     path: "{{ kasm_dir }}/data"

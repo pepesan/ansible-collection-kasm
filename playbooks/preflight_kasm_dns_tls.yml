@@ -1,0 +1,28 @@
+---
+- name: Validate public DNS and HTTPS/TLS without changing the Kasm host
+  hosts: kasm
+  gather_facts: false
+  vars:
+    kasm_domain: "{{ node_name }}.{{ kasm_base_domain }}"
+  tasks:
+    - name: Validate public DNS records against the expected host addresses
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm
+        tasks_from: dns_preflight.yml
+
+    - name: Verify HTTPS and certificate trust from the control node
+      ansible.builtin.uri:
+        url: "https://{{ kasm_domain }}/"
+        method: GET
+        validate_certs: true
+        status_code: [200, 302]
+        timeout: 15
+      delegate_to: localhost
+      become: false
+      register: kasm_dns_tls_https
+      changed_when: false
+      no_log: true
+
+    - name: Report successful public DNS and TLS validation
+      ansible.builtin.debug:
+        msg: "DNS and trusted HTTPS/TLS passed for {{ kasm_domain }} (HTTP {{ kasm_dns_tls_https.status }})."

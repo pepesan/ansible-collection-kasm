@@ -6,13 +6,35 @@
 #   ansible-playbook -i <inventory> pepesan.kasm.site_kasm \
 #     -e kasm_base_domain=example.com
 #
-# See the companion shell scripts in this directory for concrete examples
+# See the companion shell scripts in ../examples/ for concrete examples
 # (default domain, custom domain, no TLS).
 - name: Install Kasm Workspaces end to end
   hosts: kasm
+  pre_tasks:
+    - name: Check public DNS before any installation role runs
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm
+        tasks_from: dns_preflight.yml
+      vars:
+        kasm_dns_preflight_defer_failure: true
+
   roles:
-    - pepesan.kasm.docker
-    - pepesan.kasm.student
-    - pepesan.kasm.kasm_credentials
-    - pepesan.kasm.kasm
-    - pepesan.kasm.kasm_group
+    - role: pepesan.kasm.docker
+      when: not (kasm_dns_preflight_failed | default(false) | bool)
+    - role: pepesan.kasm.student
+      when: not (kasm_dns_preflight_failed | default(false) | bool)
+    - role: pepesan.kasm.kasm_credentials
+      when: not (kasm_dns_preflight_failed | default(false) | bool)
+    - role: pepesan.kasm.kasm
+      when: not (kasm_dns_preflight_failed | default(false) | bool)
+    - role: pepesan.kasm.kasm_group
+      when: not (kasm_dns_preflight_failed | default(false) | bool)
+
+- name: Summarize Kasm DNS preflight failures
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Summarize failed Kasm hosts
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm
+        tasks_from: dns_preflight_summary.yml

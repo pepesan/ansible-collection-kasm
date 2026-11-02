@@ -1,0 +1,7 @@
+---
+# Create or delete a Kasm application user through the collection role.
+# Usage: ansible-playbook -i <inventory> pepesan.kasm.kasm_user -e kasm_user_username=test@example.com
+- name: Create or delete a Kasm user
+  hosts: kasm
+  roles:
+    - pepesan.kasm.kasm_user

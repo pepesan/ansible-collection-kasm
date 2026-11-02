@@ -12,7 +12,7 @@
   ansible.builtin.command: >
     python3 {{ (role_path ~ '/files/update_credentials_csv.py') | quote }}
     --csv-dir {{ kasm_credentials_csv_dir | quote }}
-    --ip {{ (ansible_host | default(inventory_hostname)) | quote }}
+    --ip {{ (hostvars[inventory_hostname].ansible_host | default(inventory_hostname)) | quote }}
     --name {{ inventory_hostname | quote }}
     --student-user {{ kasm_credentials_student_name | quote }}
     --kasm-url {{ ('https://' ~ kasm_domain) | quote }}
