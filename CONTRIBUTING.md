@@ -41,6 +41,14 @@ scripts/check-build.sh            # builds the tarball, inspects it and installs
 scripts/molecule.sh student       # Molecule for one role, using fully qualified names
 ```
 
+### Self-hosted CI runner
+
+The Molecule matrix uses GitHub-hosted runners for pull requests and events not initiated by `pepesan` on `main` or
+`develop`. Owner-triggered pushes and manual runs on those branches use the runner label stored in the repository Actions
+variable `LORIEN_RUNNER_LABEL`; if it is unset, the job falls back to `ubuntu-latest`. Enable the runner account's
+rootless `podman.socket` user unit with lingering, and provide `$HOME/.local/bin/docker` as a symlink to Podman. On that
+runner, the workflow points Docker SDK at `/run/user/<uid>/podman/podman.sock`. Never route pull-request jobs to this runner.
+
 Only three roles have a Molecule scenario, because they are the ones that can be tested in an isolated container:
 `linux_user`, `student` and `kasm_credentials`. The rest are covered by `ansible-lint` (all of them) and by the end-to-end test
 against a real server, not by Molecule: `docker`, `kasm` and `kasm_uninstall` load kernel modules and set sysctl values, which
