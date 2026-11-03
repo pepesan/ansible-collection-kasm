@@ -21,7 +21,7 @@ trap 'rm -rf -- "${TMP_DIR}"' EXIT
 printf 'Installing collection dependencies from requirements.yml...\n'
 ansible-galaxy collection install -r "${REPO_ROOT}/requirements.yml"
 printf 'Installing pinned third-party roles from requirements.yml...\n'
-ansible-galaxy role install -r "${REPO_ROOT}/requirements.yml"
+ansible-galaxy role install --force -r "${REPO_ROOT}/requirements.yml"
 
 printf 'Building and installing the collection from this checkout...\n'
 ansible-galaxy collection build "${REPO_ROOT}" --output-path "${TMP_DIR}"

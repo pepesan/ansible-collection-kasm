@@ -2,7 +2,7 @@
 # Full install with your domain and Let's Encrypt e-mail. Requires public DNS
 # to point at each host and port 80 to be free for the HTTP-01 challenge.
 #
-# Usage: ./02_install_custom_domain.sh <inventory> <base_domain> <email>
+# Usage: ./04_install_custom_domain.sh <inventory> <base_domain> <email>
 
 set -euo pipefail
 

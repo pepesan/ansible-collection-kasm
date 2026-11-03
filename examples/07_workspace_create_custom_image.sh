@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Register an image as a Kasm workspace. Images containing "dind" are
-# automatically configured as privileged for their inner Docker daemon.
+# Register an image as a Kasm workspace. Arguments are inventory, image
+# reference, and workspace name. Images containing "dind" are automatically
+# configured as privileged for their inner Docker daemon.
 #
-# Usage: ./05_workspace_create_custom_image.sh <inventory> <image> <name>
+# Example: ./07_workspace_create_custom_image.sh ./inventory \
+#   pepesan/mi-ubuntu-resolute-kasm-ansible-dind:1.2 example-dind
 
 set -euo pipefail
 

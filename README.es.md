@@ -135,7 +135,7 @@ install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-
 ```ini
 # Contenido de ejemplo; mantenga el inventario real fuera del repositorio.
 [kasm]
-203.0.113.10 node_name=kasmdemo
+X.X.X.X node_name=kasmdemo
 
 [kasm:vars]
 ansible_user=root
@@ -143,15 +143,88 @@ ansible_become=false
 ```
 
 ```bash
-# Ejecute los playbooks con el inventario externo.
+# Use un inventario fuera del repositorio y mantenga también fuera los secretos generados.
 INVENTARIO="$HOME/.config/pepesan-kasm/inventory-mi-servidor"
+DIRECTORIO_TRABAJO="$HOME/.local/share/pepesan-kasm"
+install -d -m 700 "$DIRECTORIO_TRABAJO"
+cd "$DIRECTORIO_TRABAJO"
+
+# Valide la estructura e instale Kasm. El DNS se comprueba antes de los roles de instalación.
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.preflight_kasm_inventory
 ansible-playbook -i "$INVENTARIO" pepesan.kasm.site_kasm \
   -e kasm_base_domain=kasm.example.com \
-  -e letsencrypt_email=usted@example.com 2>&1 | tee install.log
-
-# Registrar un workspace (sin indicar imagen, se usa la de por defecto)
-ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
+  -e letsencrypt_email=usted@example.com 2>&1 | tee "$DIRECTORIO_TRABAJO/install.log"
 ```
+
+Mientras se instala, siga el log de Ansible desde otro terminal:
+
+```bash
+tail -f "$HOME/.local/share/pepesan-kasm/install.log"
+```
+
+El log de instalación de Kasm, legible solo por root, está en el servidor:
+
+```bash
+ssh root@<servidor> 'tail -f /opt/kasm/data/opt/kasm_deploy.log'
+```
+
+### Ejemplo: desplegar un workspace DinD privilegiado
+
+Las imágenes DinD necesitan `kasm_workspace_privileged: true`. Descargue la
+imagen al Docker de Kasm antes de registrar el workspace. Ejecute los comandos
+desde el mismo directorio privado para que las credenciales y la clave API
+generadas queden fuera del repositorio:
+
+Asigne a `USUARIO_PRUEBA` una cuenta nueva y exclusiva para esta prueba; la
+limpieza siguiente la elimina.
+
+```bash
+INVENTARIO="$HOME/.config/pepesan-kasm/inventory-mi-servidor"
+DIRECTORIO_TRABAJO="$HOME/.local/share/pepesan-kasm"
+IMAGEN=pepesan/mi-ubuntu-resolute-kasm-ansible-dind:1.2
+USUARIO_PRUEBA=dind-example-test@example.com
+install -d -m 700 "$DIRECTORIO_TRABAJO"
+cd "$DIRECTORIO_TRABAJO"
+
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_docker_image \
+  -e "kasm_docker_image_name=$IMAGEN" 2>&1 | tee "$DIRECTORIO_TRABAJO/image-pull.log"
+
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_workspace \
+  -e "{\"kasm_workspace_image\":\"$IMAGEN\",\"kasm_workspace_name\":\"Ubuntu DinD\",\"kasm_workspace_privileged\":true}"
+
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_user \
+  -e "kasm_user_username=$USUARIO_PRUEBA"
+
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_session \
+  -e "{\"kasm_session_user\":\"$USUARIO_PRUEBA\",\"kasm_session_workspace\":\"$IMAGEN\"}"
+```
+
+Siga la descarga de la imagen desde otro terminal:
+
+```bash
+tail -f "$HOME/.local/share/pepesan-kasm/image-pull.log"
+```
+
+Elimine solo la sesión y el usuario de prueba:
+
+```bash
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_session \
+  -e "{\"kasm_session_state\":\"absent\",\"kasm_session_user\":\"$USUARIO_PRUEBA\",\"kasm_session_workspace\":\"$IMAGEN\"}"
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_user \
+  -e "{\"kasm_user_state\":\"absent\",\"kasm_user_username\":\"$USUARIO_PRUEBA\"}"
+```
+
+Solo si la imagen/workspace es exclusiva de esta prueba y nadie más la usa,
+elimínela del catálogo:
+
+```bash
+ansible-playbook -i "$INVENTARIO" pepesan.kasm.kasm_workspace \
+  -e "{\"kasm_workspace_state\":\"absent\",\"kasm_workspace_image\":\"$IMAGEN\"}"
+```
+
+**Al borrar un workspace se cierran todas las sesiones que usen esa imagen y
+se eliminan sus perfiles persistentes de forma predeterminada.** No lo borre si
+la imagen está compartida con otros workspaces o usuarios.
 
 Los playbooks de la colección se lanzan por nombre:
 `pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,

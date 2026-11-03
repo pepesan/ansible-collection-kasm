@@ -5,6 +5,12 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The example dependency installer now refreshes pre-existing Galaxy roles to the versions pinned in `requirements.yml` instead of retaining stale versions.
+
+### Changed
+- Numbered the example scripts sequentially from `00_install_dependencies.sh`.
+
 ## [0.0.3] - 2026-11-02
 
 ### Added
