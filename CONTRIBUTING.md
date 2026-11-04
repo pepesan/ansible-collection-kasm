@@ -32,15 +32,19 @@ what must never end up in it.
 
 ## Checking a change
 
-You need `ansible-core`, `ansible-lint`, `yamllint` and, for Molecule, `molecule` and Docker.
+Use the same gates locally that CI and release require:
 
 ```bash
-ansible-lint                      # production profile, configured in .ansible-lint
+ansible-lint
 yamllint .
-scripts/check-examples.sh         # every YAML play in the documentation passes --syntax-check
-scripts/check-build.sh            # builds the tarball, inspects it and installs it in a clean environment
-scripts/molecule.sh student       # Molecule for one role, using fully qualified names
+scripts/check-build.sh
+scripts/check-examples.sh
+scripts/molecule.sh linux_user test
+scripts/molecule.sh student test
+scripts/molecule.sh kasm_credentials test
 ```
+
+These commands are sequential; run them one at a time. `check-build.sh` verifies the collection archive, performs a clean install, resolves the playbooks by name and runs the Galaxy importer. `check-examples.sh` syntax-checks every documented YAML play. The release workflow runs these checks before building or publishing.
 
 ### Self-hosted CI runner
 
@@ -52,21 +56,24 @@ with lingering, and provide `$HOME/.local/bin/docker` as a symlink to Podman. Th
 `/run/user/<uid>/podman/podman.sock`. Never route pull-request jobs to this runner.
 
 Only three roles have a Molecule scenario, because they are the ones that can be tested in an isolated container:
-`linux_user`, `student` and `kasm_credentials`. The rest are covered by `ansible-lint` (all of them) and by the end-to-end test
-against a real server, not by Molecule: `docker`, `kasm` and `kasm_uninstall` load kernel modules and set sysctl values, which
-inside a privileged container affects the **host's** kernel, and `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` and
-`kasm_docker_image` need a live Kasm. The end-to-end test is not part of the CI: it is run by hand before a release.
+`linux_user`, `student` and `kasm_credentials`. The rest are covered by `ansible-lint` and by manual end-to-end tests, not by
+Molecule: `docker`, `kasm` and `kasm_uninstall` load kernel modules and set sysctl values, which inside a privileged container
+affects the **host's** kernel, and `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` and `kasm_docker_image` need a live
+Kasm. Consult [`MATRIX.md`](MATRIX.md) for reported compatibility evidence and explicit unverified scenarios. Real-server E2E is
+not part of CI.
 
 ### End-to-end on a real server
 
-For a change that touches installation or the Kasm roles, test on a disposable Ubuntu server you own, from a clean state:
+For installation or Kasm-role changes, use a disposable server running an OS from the supported matrix in `MATRIX.md`:
 
-1. Build and install the collection from your checkout into a temporary directory, and the third-party roles from
+1. Build and install the collection from your checkout into a temporary directory, and install third-party roles from
    `requirements.yml`, so you test your code and not an old copy.
-2. Keep the inventory **outside the repository** (a server IP is a secret) and send every run to a log:
+2. Keep the inventory **outside the repository** and send every run to a log:
    `ansible-playbook ... 2>&1 | tee e2e.log`.
-3. Run `pepesan.kasm.site_kasm`, then **run it again and check that nothing changes**, then register a workspace, start a
-   session, and delete both.
+3. Run `pepesan.kasm.site_kasm` twice and verify the second run makes no changes. Exercise workspace, session and user operations.
+4. For reboot persistence, use exactly one existing workspace session: create a file in its home, reboot, recover that same
+   session, and verify the file and session ID. Do not create a second session or replacement workspace.
+5. Record redacted results and environment versions in the private run log. Never claim an OS or scenario passed without evidence.
 
 ## Never commit secrets
 
@@ -85,20 +92,24 @@ Short imperative summary on the first line, then a body that says *why*. One log
 ## Releases
 
 The version is in `galaxy.yml` and follows [Semantic Versioning](https://semver.org/). Add the change to `CHANGELOG.md`.
-Versions published on Ansible Galaxy cannot be overwritten, so build and check the tarball (`scripts/check-build.sh`) first.
+Published Galaxy versions cannot be overwritten.
 
 Run exactly one command to increment `galaxy.yml`:
 
 ```bash
-python3 scripts/bump_version.py patch   # e.g. 0.0.1 -> 0.0.2
-python3 scripts/bump_version.py minor   # e.g. 0.0.1 -> 0.1.0
-python3 scripts/bump_version.py major   # e.g. 0.0.1 -> 1.0.0
+python3 scripts/bump_version.py patch
+python3 scripts/bump_version.py minor
+python3 scripts/bump_version.py major
 ```
 
-The script edits only `galaxy.yml`. Update the `Unreleased` section in
-`CHANGELOG.md` manually; it does not commit, tag, push, or publish.
+The script edits only `galaxy.yml`. Update the `Unreleased` section in `CHANGELOG.md` manually; it does not commit, tag, push,
+or publish.
 
-Before tagging, run the local checks and dispatch the `Release` workflow
-manually for its dry run. A pushed `vX.Y.Z` tag matching `galaxy.yml` triggers
-the Galaxy publication and GitHub release; the workflow requires the
-repository's `GALAXY_API_KEY` secret.
+Before tagging:
+
+1. Run every command in **Checking a change**, sequentially, and inspect the built tarball for private data.
+2. Dispatch the `Release` workflow manually. This dry run runs validation and builds the archive but does not publish.
+3. Confirm `vX.Y.Z` matches `galaxy.yml`. Pushing that tag triggers Galaxy publication and the GitHub release; the workflow
+   requires the repository secret `GALAXY_API_KEY`.
+4. For changes requiring server behavior verification, complete and record the manual E2E separately; CI never deploys to a
+   real server.

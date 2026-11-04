@@ -1,7 +1,7 @@
 ---
 namespace: pepesan
 name: kasm
-version: 0.0.3
+version: 0.1.0
 readme: README.md
 authors:
   - David Vaquero <pepesan@gmail.com>
@@ -19,6 +19,8 @@ tags:
   - letsencrypt
   - ubuntu
   - debian
+  - almalinux
+  - rocky
 dependencies:
   community.docker: ">=3.10.0"
   community.general: ">=8.0.0"
@@ -48,5 +50,6 @@ build_ignore:
   - "datos-acceso-*"
   - "kasm-api-key-*"
   - "inventory-*"
+  - examples/inventory
   - "**/molecule"
   - "geerlingguy.*"

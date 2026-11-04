@@ -1,0 +1,16 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+    - name: Ensure the shared users group exists
+      ansible.builtin.group:
+        name: users
+        state: present
+
+    - name: Seed the test account with a shared primary group
+      ansible.builtin.user:
+        name: molecule_test_user
+        group: users
+        shell: /bin/bash
+        create_home: true
+        password: "!"

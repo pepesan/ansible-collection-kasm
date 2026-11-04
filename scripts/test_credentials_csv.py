@@ -67,8 +67,8 @@ class CredentialsCsvTests(unittest.TestCase):
             [
                 "kasm_url",
                 "ip",
-                "nombre",
                 "student_user",
+                "nombre",
                 "student_password",
                 "kasm_admin_user",
                 "kasm_admin_password",

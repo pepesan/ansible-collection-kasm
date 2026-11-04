@@ -2,7 +2,7 @@
 # Remove an existing Kasm install, including persisted Kasm data.
 # Let's Encrypt certificates are kept by default.
 #
-# Usage: ./07_kasm_uninstall.sh <inventory>
+# Usage: ./11_kasm_uninstall.sh <inventory>
 
 set -euo pipefail
 

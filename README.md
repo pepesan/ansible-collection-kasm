@@ -2,11 +2,12 @@
 
 [Español](https://github.com/pepesan/ansible-collection-kasm/blob/main/README.es.md)
 
-Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/) on Ubuntu and Debian servers: Docker, a
-Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
+Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/) on Ubuntu, Debian, AlmaLinux and Rocky Linux
+servers: Docker, a Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
 clean uninstall. Every step is idempotent: running it again changes nothing.
 
-> **Current release (0.0.3).** Tested end to end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers with Kasm 1.19.0.
+> **Current release (0.1.0).** Passed no-TLS E2E on clean Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 and
+> Rocky Linux 9/10 with Kasm 1.19.0.
 > This is an independent project, not affiliated with or endorsed by Kasm Technologies.
 
 ## What is inside
@@ -30,9 +31,11 @@ The roles are used by their fully qualified name, for example `pepesan.kasm.kasm
 ## Requirements
 
 - **Control node:** `ansible-core` 2.15 or newer and SSH access as `root` to the server.
-- **Server:** Ubuntu 24.04 or 26.04, or Debian 12 or 13 (all tested), with ports 80 and 443 free. With TLS enabled, `site_kasm`
-  checks public DNS A/AAAA records against the expected server address before any installation role runs. A failing host is
-  skipped while other hosts continue; the final play lists DNS failures.
+- **Server:** Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10, or Rocky Linux 9/10
+  (no-TLS E2E tested), with ports 80 and 443 free. With TLS enabled,
+  `site_kasm` checks public DNS A/AAAA records against the expected server
+  address before any installation role runs. A failing host is skipped while
+  other hosts continue; the final play lists DNS failures.
 - **Collections:** `community.docker`, `community.general` and `ansible.posix` are installed automatically with this one.
 - **Third-party roles, which are NOT included** (a collection cannot depend on roles, so install them yourself):
 
@@ -133,7 +136,7 @@ install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-
 ```ini
 # Example content; keep the real inventory outside the repository.
 [kasm]
-203.0.113.10 node_name=kasmdemo
+X.X.X.X node_name=kasmdemo
 
 [kasm:vars]
 ansible_user=root
@@ -141,15 +144,91 @@ ansible_become=false
 ```
 
 ```bash
-# Run the playbooks with the external inventory.
+# Use an inventory outside the repository and keep generated secrets outside it too.
 INVENTORY="$HOME/.config/pepesan-kasm/inventory-my-server"
+WORK_DIR="$HOME/.local/share/pepesan-kasm"
+install -d -m 700 "$WORK_DIR"
+cd "$WORK_DIR"
+
+# Validate structure, then install Kasm. DNS is checked before installation roles run.
+ansible-playbook -i "$INVENTORY" pepesan.kasm.preflight_kasm_inventory
 ansible-playbook -i "$INVENTORY" pepesan.kasm.site_kasm \
   -e kasm_base_domain=kasm.example.com \
-  -e letsencrypt_email=you@example.com 2>&1 | tee install.log
-
-# Register a workspace (with no image given, the default one is used)
-ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_workspace 2>&1 | tee workspace.log
+  -e letsencrypt_email=you@example.com 2>&1 | tee "$WORK_DIR/install.log"
 ```
+
+While installation is running, follow the Ansible log in a second terminal:
+
+```bash
+tail -f "$HOME/.local/share/pepesan-kasm/install.log"
+```
+
+Kasm's root-only installer log is on the server:
+
+```bash
+ssh root@<server> 'tail -f /opt/kasm/data/opt/kasm_deploy.log'
+```
+
+### Example: deploy a privileged DinD workspace
+
+DinD images need `kasm_workspace_privileged: true`. Pull the image into Kasm's
+Docker before registering the workspace. Run from the same private working
+directory so generated credentials and API-key files stay outside the repo:
+
+Set `TEST_USER` to an unused, test-only account; the cleanup below deletes it.
+
+```bash
+INVENTORY="$HOME/.config/pepesan-kasm/inventory-my-server"
+WORK_DIR="$HOME/.local/share/pepesan-kasm"
+IMAGE=pepesan/mi-ubuntu-resolute-kasm-ansible-dind:1.2
+TEST_USER=dind-example-test@example.com
+install -d -m 700 "$WORK_DIR"
+cd "$WORK_DIR"
+
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_docker_image \
+  -e "kasm_docker_image_name=$IMAGE" 2>&1 | tee "$WORK_DIR/image-pull.log"
+
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_workspace \
+  -e "{\"kasm_workspace_image\":\"$IMAGE\",\"kasm_workspace_name\":\"Ubuntu DinD\",\"kasm_workspace_privileged\":true}"
+
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_user \
+  -e "kasm_user_username=$TEST_USER"
+
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_session \
+  -e "{\"kasm_session_user\":\"$TEST_USER\",\"kasm_session_workspace\":\"$IMAGE\"}"
+```
+
+The session role also installs a per-session systemd recovery unit by default.
+After a host reboot it starts the same existing container; set
+`kasm_session_recover_on_boot=false` to disable that behavior. See the
+[`kasm_session` role guide](roles/kasm_session/README.md).
+
+Follow the image pull from another terminal:
+
+```bash
+tail -f "$HOME/.local/share/pepesan-kasm/image-pull.log"
+```
+
+Destroy only the test session and test user:
+
+```bash
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_session \
+  -e "{\"kasm_session_state\":\"absent\",\"kasm_session_user\":\"$TEST_USER\",\"kasm_session_workspace\":\"$IMAGE\"}"
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_user \
+  -e "{\"kasm_user_state\":\"absent\",\"kasm_user_username\":\"$TEST_USER\"}"
+```
+
+Only if the workspace/image is dedicated to this test and no one else uses it,
+unregister it:
+
+```bash
+ansible-playbook -i "$INVENTORY" pepesan.kasm.kasm_workspace \
+  -e "{\"kasm_workspace_state\":\"absent\",\"kasm_workspace_image\":\"$IMAGE\"}"
+```
+
+**Workspace deletion closes every session using that image and deletes its
+persistent profiles by default.** Do not run it for an image used by other
+workspaces or users.
 
 The collection playbooks can be run by name:
 `pepesan.kasm.site_kasm`, `pepesan.kasm.kasm_workspace`,
@@ -159,7 +238,9 @@ The collection playbooks can be run by name:
 trusted HTTPS/TLS only). The first installation takes several minutes; send
 output to a log with `tee` and follow it with `tail -f`.
 
-The full guide, with every variable and the troubleshooting table, is in [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
+The usage guide covers common defaults, per-role variable references, and
+troubleshooting: [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
+
 
 ## Passwords
 
@@ -184,9 +265,13 @@ sorted by that URL. **Never commit the CSV, `.credentials/` or your inventory**:
   and `kasm_credentials`. Roles that touch the host kernel are refused by the script on purpose.
 - The roles that talk to a live Kasm (`kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user`, `kasm_docker_image`) cannot
   run in an isolated container, so they are verified end to end against a real server instead.
-- End-to-end on clean Ubuntu 24.04 and 26.04 and Debian 12 and 13 servers: full install, repeat (no changes), workspace, session, user, uninstall and reinstall.
+- No-TLS E2E on clean Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 and Rocky Linux 9/10
+  with Kasm 1.19.0: full install, idempotent repeat, privileged DinD workspace/session
+  and nested Docker run, user operations, uninstall and reinstall.
 
 See [CONTRIBUTING.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/CONTRIBUTING.md).
+
+Detailed per-platform evidence and open recovery scenarios: [MATRIX.md](MATRIX.md).
 
 ## Related repositories
 

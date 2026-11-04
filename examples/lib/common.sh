@@ -11,7 +11,7 @@ kasm_examples_init() {
   repo_root="$(realpath -e -- "${examples_dir}/..")"
   export ANSIBLE_CONFIG="${examples_dir}/ansible.cfg"
 
-  KASM_DATA_DIR="${KASM_DATA_DIR:-${HOME}/.local/share/pepesan-kasm/examples}"
+  KASM_DATA_DIR="${KASM_DATA_DIR:-${HOME}/pepesan-kasm-data}"
   if [[ "${KASM_DATA_DIR}" != /* ]]; then
     KASM_DATA_DIR="${caller_dir}/${KASM_DATA_DIR}"
   fi
@@ -56,7 +56,7 @@ kasm_examples_init() {
     chmod 600 -- "${KASM_INVENTORY_TMP}/02-kasm-group.ini"
     export KASM_INVENTORY_FOR_RUN="${KASM_INVENTORY_TMP}"
     trap 'rm -rf -- "${KASM_INVENTORY_TMP}"' EXIT
-    printf 'Using a temporary [kasm:children] alias for the inventory\047s [ubuntu] group; the source file is unchanged.\n' >&2
+    printf 'Using a temporary [kasm:children] compatibility group; the source inventory is unchanged.\n' >&2
   else
     export KASM_INVENTORY_FOR_RUN="${KASM_SOURCE_INVENTORY}"
   fi

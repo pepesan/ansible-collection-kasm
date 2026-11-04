@@ -13,7 +13,7 @@ is installed.
 
 1. **Prefer IPv4 over IPv6** (`/etc/gai.conf`).
 2. `geerlingguy.docker`, through `include_role`.
-3. Kernel modules, sysctl values and `python3-docker`.
+3. Kernel modules and sysctl values; enable EPEL on Rocky/AlmaLinux, then install `python3-docker`.
 
 `geerlingguy.docker` is deliberately included from the tasks and **not** a
 `meta` dependency: dependencies always run before the role's own tasks, and

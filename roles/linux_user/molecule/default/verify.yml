@@ -20,3 +20,12 @@
       failed_when: >-
         'docker' not in linux_user_groups.stdout
         or 'sudo' not in linux_user_groups.stdout
+    - name: Read the user's primary group
+      ansible.builtin.command: id -gn molecule_test_user
+      register: linux_user_primary_group
+      changed_when: false
+
+    - name: Assert the user's private group is primary
+      ansible.builtin.assert:
+        that:
+          - linux_user_primary_group.stdout == "molecule_test_user"

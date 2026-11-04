@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+container_id="${1:-}"
+session_id="${2:-unknown}"
+if [[ ! "${container_id}" =~ ^[[:xdigit:]]{12,64}$ ]]; then
+  printf 'Invalid Docker container ID for Kasm session %s.\n' "${session_id}" >&2
+  exit 2
+fi
+
+# The host Docker service starts the outer Kasm container; its nested Docker
+# daemon becomes ready later. Wait for it, but never create a replacement.
+for ((attempt = 1; attempt <= 48; attempt++)); do
+  if docker exec kasm docker info >/dev/null 2>&1; then
+    break
+  fi
+  sleep 5
+done
+if (( attempt > 48 )); then
+  printf 'Kasm nested Docker did not become ready for session %s.\n' "${session_id}" >&2
+  exit 1
+fi
+# The workspace must not start before Kasm's control plane is ready. Starting
+# it while Kasm is still booting can cause the session container to be killed.
+required_components=(kasm_api kasm_manager kasm_agent)
+components_ready=0
+for ((attempt = 1; attempt <= 60; attempt++)); do
+  components_ready=1
+  for component in "${required_components[@]}"; do
+    component_state="$(docker exec kasm docker inspect \
+      --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+      "${component}" 2>/dev/null || true)"
+    if [[ "${component_state}" != 'running healthy' ]]; then
+      components_ready=0
+      break
+    fi
+  done
+  if (( components_ready == 1 )); then
+    break
+  fi
+  sleep 5
+done
+if (( components_ready == 0 )); then
+  for component in "${required_components[@]}"; do
+    component_state="$(docker exec kasm docker inspect \
+      --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+      "${component}" 2>/dev/null || true)"
+    printf 'Kasm component %s is not healthy (state: %s); cannot safely recover session %s.\n' \
+      "${component}" "${component_state:-unavailable}" "${session_id}" >&2
+  done
+  exit 1
+fi
+
+printf 'Kasm API, manager, and agent are healthy; checking session %s.\n' "${session_id}"
+
+inspect_state() {
+  docker exec kasm docker inspect --format '{{.State.Status}}' "${container_id}"
+}
+
+state="$(inspect_state)" || {
+  printf 'Existing container %s for Kasm session %s was not found; refusing to create a replacement.\n' \
+    "${container_id}" "${session_id}" >&2
+  exit 1
+}
+
+case "${state}" in
+  running|paused)
+    printf 'Existing Kasm session %s container is already %s.\n' "${session_id}" "${state}"
+    ;;
+  created|exited)
+    printf 'Starting existing Kasm session %s container %s.\n' "${session_id}" "${container_id}"
+    if ! docker exec kasm docker start "${container_id}" >/dev/null; then
+      state="$(inspect_state 2>/dev/null || true)"
+      if [[ "${state}" != running && "${state}" != paused ]]; then
+        printf 'Could not start existing Kasm session %s container %s.\n' \
+          "${session_id}" "${container_id}" >&2
+        exit 1
+      fi
+    fi
+    ;;
+  *)
+    printf 'Kasm session %s container is in unsupported state %s; refusing to replace it.\n' \
+      "${session_id}" "${state}" >&2
+    exit 1
+    ;;
+esac
+
+for ((attempt = 1; attempt <= 15; attempt++)); do
+  state="$(inspect_state 2>/dev/null || true)"
+  case "${state}" in
+    running|paused)
+      ;;
+    exited|dead)
+      printf 'Existing Kasm session %s container stopped during recovery in state %s.\n' \
+        "${session_id}" "${state}" >&2
+      exit 1
+      ;;
+    *)
+      printf 'Existing Kasm session %s container entered unexpected state %s during recovery.\n' \
+        "${session_id}" "${state:-unavailable}" >&2
+      exit 1
+      ;;
+  esac
+  sleep 1
+done
+
+printf 'Existing Kasm session %s container remained %s for 15 seconds.\n' \
+  "${session_id}" "${state}"
+exit 0
+

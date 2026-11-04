@@ -22,9 +22,10 @@ registrado al menos un workspace.
 | `kasm_session_state` | `present` | `present`: asegura que el usuario tiene una sesión disponible (la crea si falta y espera a `running` o `paused`). `absent`: la destruye |
 | `kasm_session_user` | `user@kasm.local` | Usuario de Kasm dueño de la sesión. Debe existir ya |
 | `kasm_session_workspace` | `""` (obligatoria) | Un workspace ya registrado, por el `name` de su imagen (`pepesan/mi-ubuntu-resolute-kasm-python-dind:1.3`) o por su `friendly_name` (`Python Docker (Ubuntu 26.04)`) |
-| `kasm_session_recover_stopped` | `false` | Si Kasm informa que la sesión está detenida/pausada, inspecciona su `container_id` y la inicia solo si Docker la encuentra `created`/`exited`. Nunca crea una sesión sustitutiva. Requiere Docker CLI/acceso al DinD del host |
+| `kasm_session_recover_stopped` | `false` | Ejecuta recuperación mediante API al lanzar el rol. Con recuperación al arranque activada, esta comprobación ya se realiza; ponlo en `true` para recuperar inmediatamente cuando `kasm_session_recover_on_boot` esté desactivada |
+| `kasm_session_recover_on_boot` | `true` | Instala y habilita una unidad systemd por sesión que inicia el mismo contenedor tras reiniciar; no crea una sesión sustitutiva |
 | `kasm_session_timeout_seconds` | `600` | Cuánto esperar a que Kasm reporte `running` o `paused` (el arranque en frío de una imagen grande puede tardar minutos) |
-| `kasm_session_launch_retries` / `kasm_session_launch_delay` | `6` / `10` | Intentos y segundos entre ellos cuando Kasm rechaza un momento la petición de sesión |
+| `kasm_session_launch_retries` / `kasm_session_launch_delay` | `18` / `10` | Intentos y segundos entre reintentos cuando Kasm rechaza temporalmente la petición (hasta 3 minutos para permitir que se prepare una imagen grande) |
 | `kasm_session_poll_seconds` | `5` | Intervalo de sondeo mientras espera |
 | `kasm_session_api_key_file` | `{{ kasm_dir }}/.kasm_api_key.json` | API key persistente creada por `kasm_workspace` |
 
@@ -51,36 +52,48 @@ registrado al menos un workspace.
   [`kasm_group`](../kasm_group/README.es.md): 3600 s y acción `pause` por
   defecto). Lo que corra dentro (p. ej. un laboratorio docker compose) queda
   congelado, no perdido, y se reanuda cuando un usuario se conecta.
-- La recuperación tras un reinicio de Debian es opt-in. Ejecútala solo cuando
-  Kasm y su API ya estén disponibles; activa `kasm_session_recover_stopped`.
-  Si Kasm informa `paused` (como puede ocurrir tras el arranque), el rol
-  inspecciona el contenedor y lo inicia si quedó `created` o `exited`. Un
-  contenedor que siga `paused` se deja intacto; Kasm lo reanuda cuando el
-  usuario se conecta. Si falta el ID o Docker no puede inspeccionarlo, el rol
-  falla sin destruir ni sustituir la sesión.
-- La opción no instala una tarea de arranque automático en Debian. Después del
-  reinicio hay que volver a ejecutar el rol para iniciar esa sesión.
-- La respuesta de `request_kasm` incluye un token de sesión: esas tareas van
-  con `no_log`.
+- Por defecto, el rol instala una unidad systemd por sesión
+  (`kasm_session_recover_on_boot=true`). Al arrancar, espera a Docker del host,
+  al Docker anidado de Kasm y a que estén sanos Kasm API, manager y agent;
+  después inicia el mismo contenedor solo si su estado es `created` o `exited`.
+  Deja intactos los estados `running` y `paused` y comprueba su estabilidad
+  durante 15 segundos.
+- La unidad se elimina al poner la sesión en `absent` o desactivar la
+  recuperación al arranque. `kasm_uninstall` elimina todas las unidades y el
+  helper.
+- Solo se reinicia el contenedor existente. No se crea otra sesión Kasm ni se
+  restauran procesos interrumpidos por el apagado del host.
+- `kasm_session_recover_stopped=true` ejecuta la misma recuperación segura al
+  lanzar el rol, aunque `kasm_session_recover_on_boot=false`. Si faltan IDs o
+  contenedores, o Docker informa un estado no admitido, falla sin sustituir la
+  sesión.
+- La respuesta de `request_kasm` incluye un token de sesión; las tareas correspondientes usan `no_log`.
 - Una sesión reserva los cores y la memoria del workspace mientras exista;
   conviene vigilar la capacidad del host antes de lanzar varias.
 
 ## Recuperar la misma sesión tras reiniciar el host
 
-Cuando Kasm vuelva a estar disponible, activa la recuperación al ejecutar el
-rol. No destruye ni crea sesiones; inicia el contenedor ligado al `kasm_id`
-existente:
+Al ejecutar el rol con `kasm_session_state=present` (predeterminado), se
+instala y habilita una unidad systemd por sesión. En el siguiente arranque,
+espera a Docker del host, al Docker anidado y a que estén sanos Kasm API,
+manager y agent. Después inicia el mismo contenedor si su estado es `created`
+o `exited` y comprueba que sigue activo durante 15 segundos.
+
+Para una sesión creada antes de habilitar esta función, ejecuta el rol una vez
+cuando Kasm vuelva a estar disponible. `kasm_session_recover_on_boot=true` es
+el valor predeterminado: recupera inmediatamente el contenedor detenido e
+instala la unidad para futuros reinicios:
 
 ```bash
 ansible-playbook -i inventory pepesan.kasm.kasm_session \
   -e kasm_session_workspace=pepesan/mi-ubuntu-resolute-kasm-ansible-dind:1.2 \
-  -e kasm_session_recover_stopped=true
+  -e kasm_session_recover_on_boot=true
 ```
 
-La ejecución espera a que la API confirme `running` o `paused` (Kasm reanuda
-una sesión pausada cuando el usuario se conecta). Después, abre la sesión
-original desde Kasm. Esta opción no recupera procesos que se perdieron al
-apagarse el host ni instala una tarea automática de arranque.
+El rol espera a que Kasm informe `running` o `paused`; después, abre la sesión
+original. Usa `kasm_session_recover_on_boot=false` para deshabilitar y quitar
+la unidad. Se reinicia el mismo contenedor, pero no se restauran procesos
+interrumpidos al apagar el host.
 
 ## Nombres con espacios
 

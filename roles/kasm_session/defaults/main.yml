@@ -24,7 +24,7 @@ kasm_session_poll_seconds: 5
 # Kasm may refuse a session request for a moment (for example right after a
 # workspace was registered). The request is retried this many times, with this
 # many seconds between attempts, before the role fails.
-kasm_session_launch_retries: 6
+kasm_session_launch_retries: 18
 kasm_session_launch_delay: 10
 
 # Re-start the existing workspace container if Kasm reports the session as
@@ -32,6 +32,13 @@ kasm_session_launch_delay: 10
 # This targets the same container/kasm_id; it never creates a replacement.
 # Requires Docker access to the Kasm DinD container.
 kasm_session_recover_stopped: false
+# Install a systemd one-shot that starts this same container after a host reboot.
+# The unit waits for the host Docker daemon and Kasm's nested Docker daemon.
+kasm_session_recover_on_boot: true
+
+# Host paths owned by this role for boot-time session recovery.
+kasm_session_recover_script: /usr/local/sbin/pepesan-kasm-session-recover
+kasm_session_recover_unit_dir: /etc/systemd/system
 
 # Reuses the persistent, ansible-managed API key bootstrapped by
 # kasm_workspace on this host (same file kasm_user reads). It needs the

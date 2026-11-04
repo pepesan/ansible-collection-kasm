@@ -2,6 +2,10 @@
 # Same path used by the kasm role to install — must match to find anything.
 kasm_dir: /opt/kasm
 
+# Paths used by kasm_session for per-session boot recovery.
+kasm_session_recover_unit_dir: /etc/systemd/system
+kasm_session_recover_script: /usr/local/sbin/pepesan-kasm-session-recover
+
 # Wipes the DinD container's persisted state: database, Kasm's own
 # self-signed certs, install marker, logs, session profiles. This is what
 # makes the *next* kasm role run a genuine fresh install instead of the

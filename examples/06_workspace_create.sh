@@ -2,7 +2,7 @@
 # Create a workspace. Defaults to the project desktop image; image and name are
 # optional so the same script can register another supported image.
 #
-# Usage: ./04_workspace_create.sh <inventory> [image] [workspace_name]
+# Usage: ./06_workspace_create.sh <inventory> [image] [workspace_name]
 
 set -euo pipefail
 

@@ -61,6 +61,12 @@
     reload: true
   loop: "{{ docker_sysctl_values }}"
 
+- name: Enable EPEL for the Python Docker SDK on Rocky Linux and AlmaLinux
+  ansible.builtin.package:
+    name: epel-release
+    state: present
+  when: ansible_facts['distribution'] in ['Rocky', 'AlmaLinux']
+
 - name: Install python3-docker (required by Ansible's docker modules)
   ansible.builtin.package:
     name: python3-docker

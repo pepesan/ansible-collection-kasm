@@ -1,8 +1,8 @@
 ---
 # Pure ansible.builtin.uri against Kasm's public API (get_users, get_images,
-# get_kasms, request_kasm, get_kasm_status, destroy_kasm). Optional recovery
-# starts the existing container through the host's Docker CLI; never accesses
-# Postgres or requests a replacement when an existing session is found.
+# get_kasms, request_kasm, get_kasm_status, destroy_kasm). Recovery starts the
+# existing container through the host Docker CLI; it never accesses Postgres or
+# requests a replacement. Each managed session gets a systemd boot unit.
 #
 # Facts exported on success (state present):
 #   kasm_session_id            the session's kasm_id
@@ -123,6 +123,66 @@
          ~ kasm_session_image_hex[12:16] ~ '-' ~ kasm_session_image_hex[16:20] ~ '-'
          ~ kasm_session_image_hex[20:32] }}
 
+- name: Set stable systemd recovery unit identity
+  ansible.builtin.set_fact:
+    kasm_session_recover_unit_name: >-
+      pepesan-kasm-session-{{ kasm_session_user_hex }}-{{ kasm_session_image_hex }}.service
+    kasm_session_recover_unit_path: >-
+      {{ kasm_session_recover_unit_dir }}/pepesan-kasm-session-{{ kasm_session_user_hex }}-{{ kasm_session_image_hex }}.service
+
+- name: Check for a previous boot-time recovery unit
+  ansible.builtin.stat:
+    path: "{{ kasm_session_recover_unit_path }}"
+  register: kasm_session_recover_unit_stat
+  when: >-
+    kasm_session_state == 'absent'
+    or (kasm_session_state == 'present' and not (kasm_session_recover_on_boot | bool))
+
+- name: Disable previous boot-time recovery for this session
+  ansible.builtin.systemd_service:
+    name: "{{ kasm_session_recover_unit_name }}"
+    state: stopped
+    enabled: false
+  when:
+    - kasm_session_state == 'absent' or not (kasm_session_recover_on_boot | bool)
+    - kasm_session_recover_unit_stat.stat.exists | default(false)
+
+- name: Remove the previous boot-time recovery unit
+  ansible.builtin.file:
+    path: "{{ kasm_session_recover_unit_path }}"
+    state: absent
+  register: kasm_session_recover_unit_removed
+  when:
+    - kasm_session_state == 'absent' or not (kasm_session_recover_on_boot | bool)
+    - kasm_session_recover_unit_stat.stat.exists | default(false)
+
+- name: Reload systemd after removing session recovery
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - daemon-reload
+  changed_when: false
+  when:
+    - kasm_session_state == 'absent' or not (kasm_session_recover_on_boot | bool)
+    - kasm_session_recover_unit_removed.changed | default(false)
+
+- name: Find remaining boot-time Kasm session recovery units
+  ansible.builtin.find:
+    paths: "{{ kasm_session_recover_unit_dir }}"
+    patterns: "pepesan-kasm-session-*.service"
+    file_type: file
+  register: kasm_session_remaining_recovery_units
+  when: >-
+    kasm_session_state == 'absent'
+    or (kasm_session_state == 'present' and not (kasm_session_recover_on_boot | bool))
+
+- name: Remove the recovery helper when no units remain
+  ansible.builtin.file:
+    path: "{{ kasm_session_recover_script }}"
+    state: absent
+  when:
+    - kasm_session_state == 'absent' or not (kasm_session_recover_on_boot | bool)
+    - kasm_session_remaining_recovery_units.matched | default(0) | int == 0
 - name: List existing sessions
   ansible.builtin.uri:
     url: "{{ kasm_url }}/api/public/get_kasms"
@@ -219,7 +279,7 @@
   no_log: true
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
 
 - name: Detect Kasm's stopped or paused status response
@@ -231,7 +291,7 @@
            kasm_session_recovery_status.json.get('kasm', {}).get('operational_status', '')) == 'paused' }}
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
 
 - name: Require a known container id before recovering the session
@@ -242,7 +302,7 @@
       session or guess which container to start.
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
     - kasm_session_recovery_required | bool
     - kasm_session_existing.container_id | default('') | length == 0
@@ -264,7 +324,7 @@
   no_log: true
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
     - kasm_session_recovery_required | bool
     - kasm_session_existing.container_id | default('') | length > 0
@@ -276,7 +336,7 @@
       session was created. Check Docker access to the Kasm DinD container.
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
     - kasm_session_recovery_required | bool
     - kasm_session_container_inspect.rc | default(0) != 0
@@ -290,7 +350,7 @@
       state; a running or Kasm-paused container is left untouched. The session was not replaced.
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
     - kasm_session_recovery_required | bool
     - kasm_session_container_inspect.stdout | default('') not in ['created', 'exited', 'running', 'paused']
@@ -309,7 +369,7 @@
   no_log: true
   when:
     - kasm_session_state == 'present'
-    - kasm_session_recover_stopped | bool
+    - (kasm_session_recover_stopped | bool) or (kasm_session_recover_on_boot | bool)
     - kasm_session_existing | length > 0
     - kasm_session_recovery_required | bool
     - kasm_session_container_inspect.stdout | default('') in ['created', 'exited']
@@ -348,6 +408,49 @@
            'container_id', kasm_session_existing.container_id | default('')) }}
   no_log: true
   when: kasm_session_state == 'present'
+
+- name: Require a container id for boot-time recovery
+  ansible.builtin.assert:
+    that:
+      - kasm_session_container_id | length > 0
+    fail_msg: >-
+      Kasm did not report a container_id for this session; cannot install
+      safe boot-time recovery.
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_on_boot | bool
+
+- name: Install the boot-time recovery helper
+  ansible.builtin.copy:
+    src: pepesan-kasm-session-recover
+    dest: "{{ kasm_session_recover_script }}"
+    owner: root
+    group: root
+    mode: "0750"
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_on_boot | bool
+
+- name: Install the boot-time recovery unit for this session
+  ansible.builtin.template:
+    src: session-recover.service.j2
+    dest: "{{ kasm_session_recover_unit_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_on_boot | bool
+
+- name: Enable boot-time recovery for this session
+  ansible.builtin.systemd_service:
+    name: "{{ kasm_session_recover_unit_name }}"
+    enabled: true
+    daemon_reload: true
+  when:
+    - kasm_session_state == 'present'
+    - kasm_session_recover_on_boot | bool
+
 
 - name: Report the session
   ansible.builtin.debug:

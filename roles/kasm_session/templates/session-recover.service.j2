@@ -1,0 +1,13 @@
+[Unit]
+Description=Recover existing Kasm workspace session {{ kasm_session_id }}
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ kasm_session_recover_script }} {{ kasm_session_container_id }} {{ kasm_session_id }}
+TimeoutStartSec=660
+
+[Install]
+WantedBy=multi-user.target

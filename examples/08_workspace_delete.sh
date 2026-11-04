@@ -2,7 +2,7 @@
 # Delete one workspace. Persistent profile data is deleted by default; pass
 # keep_profiles to preserve it.
 #
-# Usage: ./06_workspace_delete.sh <inventory> <image> [keep_profiles]
+# Usage: ./08_workspace_delete.sh <inventory> <image> [keep_profiles]
 
 set -euo pipefail
 

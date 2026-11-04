@@ -10,8 +10,10 @@ instalador de dependencias y scripts operativos. Consulte [`examples/README.md`]
 
 ## 1. Antes de empezar
 
-**Nodo de control** (su máquina): `ansible-core` 2.15+ y acceso SSH como `root` al servidor (Ubuntu 24.04/26.04 o Debian 12/13). Instale una sola vez la
-colección y los roles de terceros (ver el [README](../README.es.md#instalación)).
+**Nodo de control** (su máquina): `ansible-core` 2.15+ y acceso SSH como `root`
+a un servidor compatible (Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 o
+Rocky Linux 9/10). Instale una sola vez la colección y los roles de terceros
+(ver el [README](../README.es.md#instalación)).
 
 **Inventario.** Un host por servidor Kasm. `node_name` decide el nombre DNS: el servidor se alcanza en
 `<node_name>.<kasm_base_domain>`.
@@ -36,6 +38,49 @@ install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-
 
 **DNS.** Para un certificado real, `<node_name>.<kasm_base_domain>` debe resolver ya al servidor, idealmente sin un registro
 AAAA que apunte a un sitio roto, y el puerto 80 debe estar libre para el desafío HTTP-01.
+
+### Fuentes y referencias de variables
+
+Para las fuentes de configuración utilizadas por estos playbooks, la
+precedencia es: defaults del rol < variables del inventario < variables del
+playbook < variables extra de la línea de comandos (`-e`). `-e` prevalece
+sobre los valores del inventario y del playbook. Otras fuentes de Ansible
+pueden tener su propia precedencia; consulte la
+[referencia de precedencia de Ansible](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence)
+para ver el orden completo.
+
+Defina los valores de cada servidor, como `node_name`, en su línea del
+inventario, y los valores compartidos, como `kasm_base_domain` y
+`letsencrypt_email`, en `[kasm:vars]`. Use `-e` para una modificación de una
+sola ejecución. `KASM_DATA_DIR` es distinto: es una variable de entorno que
+leen los scripts shell de `examples` para elegir dónde guardar los CSV y
+ficheros de credenciales locales; Ansible no la trata como variable de la
+colección.
+
+No incluya contraseñas reales en un inventario normal ni en argumentos
+literales como `-e password=valor`. Use Ansible Vault para secretos fijos;
+las credenciales generadas se guardan en el nodo de control, como se explica
+más abajo.
+
+El README de cada rol documenta sus variables públicas, defaults, valores
+obligatorios y efectos. El rol `kasm_workspace` agrupa las variables por
+función.
+
+| Rol | Referencia de variables |
+|---|---|
+| `docker` | [README del rol](../roles/docker/README.es.md) |
+| `kasm` | [README del rol](../roles/kasm/README.es.md) |
+| `kasm_credentials` | [README del rol](../roles/kasm_credentials/README.es.md) |
+| `kasm_docker_image` | [README del rol](../roles/kasm_docker_image/README.es.md) |
+| `kasm_group` | [README del rol](../roles/kasm_group/README.es.md) |
+| `kasm_session` | [README del rol](../roles/kasm_session/README.es.md) |
+| `kasm_uninstall` | [README del rol](../roles/kasm_uninstall/README.es.md) |
+| `kasm_user` | [README del rol](../roles/kasm_user/README.es.md) |
+| `kasm_workspace` | [README del rol](../roles/kasm_workspace/README.es.md) |
+| `linux_user` | [README del rol](../roles/linux_user/README.es.md) |
+| `student` | [README del rol](../roles/student/README.es.md) |
+
+Los ficheros de variables cifrados se pueden pasar con `-e @vault.yml --ask-vault-pass`.
 
 ## 2. Instalar Kasm (`pepesan.kasm.site_kasm`)
 
@@ -81,8 +126,8 @@ repositorio.
 | `.credentials/<host>-kasm-admin.pass` | Contraseña de `admin@kasm.local` |
 | `.credentials/<host>-kasm-user.pass` | Contraseña del `user@kasm.local` integrado |
 | `.credentials/<host>-kasm-user-<usuario>.pass` | Contraseña de un usuario creado con `kasm_user` |
-| `access-data-<nombre del fichero de inventario>.csv` | Una fila por nodo; primera columna `kasm_url`, ordenadas por la URL completa: IP, nombre del inventario, usuario/contraseña de `student` y credenciales admin/usuario normal de Kasm |
-| `kasm-api-key-<ip>.json` | Copia de la clave de API persistente (se crea con el primer workspace) |
+| `access-data-<nombre del fichero de inventario>.csv` | Una fila por nodo; columnas `kasm_url`, `ip`, `student_user`, `nombre`, `student_password` y credenciales admin/usuario normal de Kasm; filas ordenadas por la URL completa |
+| `kasm-api-key-<inventory_hostname>.json` | Copia de la clave de API persistente (se crea con el primer workspace) |
 
 Las contraseñas se generan **una sola vez** y se reutilizan en las ejecuciones siguientes. Para obtener otras nuevas, borre
 `.credentials/` antes de la instalación. Cualquiera de ellas se puede fijar con un parámetro: `-e student_password_plain=...`,
