@@ -1,7 +1,11 @@
-# Documentation-only address from TEST-NET-3. Never put a real host here.
+# Replace X.X.X.X and kasmdemo with values for your server.
 [kasm]
-203.0.113.10 node_name=kasmdemo
+X.X.X.X node_name=kasmdemo
 
 [kasm:vars]
 ansible_user=root
 ansible_become=false
+# Shared DNS suffix; node_name=kasmdemo becomes kasmdemo.kasm.example.com.
+kasm_base_domain=kasm.example.com
+kasm_training_project=client-01
+letsencrypt_email=admin@example.com

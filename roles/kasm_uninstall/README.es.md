@@ -9,6 +9,9 @@ Opcionalmente, elimina el certificado real de Let's Encrypt. Permite que el rol
 [`kasm`](../kasm/README.es.md) vuelva a ejecutarse como una instalación nueva,
 en vez de arreglar a mano por SSH un servidor a medio romper.
 
+También deshabilita y elimina las unidades systemd de recuperación por sesión
+instaladas por `kasm_session`.
+
 No hay ningún rol de Galaxy que cubra esto, y el propio `install.sh` de Kasm
 no tiene opción `--uninstall` — confirmado haciendo grep directamente sobre
 un host real.

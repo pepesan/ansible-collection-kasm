@@ -10,8 +10,10 @@ and operational wrappers. See [`examples/README.md`](../examples/README.md) for 
 
 ## 1. Before you start
 
-**Control node** (your machine): `ansible-core` 2.15+ and SSH access as `root` to the server (Ubuntu 24.04/26.04 or Debian 12/13). Install the
-collection and the third-party roles once (see the [README](../README.md#installation)).
+**Control node** (your machine): `ansible-core` 2.15+ and SSH access as `root`
+to a supported server (Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 or
+Rocky Linux 9/10). Install the collection and third-party roles once (see the
+[README](../README.md#installation)).
 
 **Inventory.** One host per Kasm server. `node_name` decides the DNS name: the server is reached at
 `<node_name>.<kasm_base_domain>`.
@@ -36,6 +38,45 @@ install -m 600 examples/inventory.example "$HOME/.config/pepesan-kasm/inventory-
 
 **DNS.** For a real certificate, `<node_name>.<kasm_base_domain>` must already resolve to the server, ideally with no
 AAAA record pointing somewhere broken, and port 80 must be free for the HTTP-01 challenge.
+
+### Variable sources and role references
+
+For the configuration sources used by these playbooks, precedence is: role
+defaults < inventory variables < playbook variables < command-line extra
+variables (`-e`). `-e` overrides values set in the inventory or playbook.
+Other Ansible variable sources can have their own precedence; see the
+[Ansible precedence reference](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence)
+for the complete order.
+
+Put per-server values such as `node_name` on each host in the inventory, and
+shared values such as `kasm_base_domain` and `letsencrypt_email` in
+`[kasm:vars]`. Use `-e` for a one-run override. `KASM_DATA_DIR` is different:
+it is an environment variable read by the example shell scripts to choose
+where local CSVs and credential files are stored; Ansible does not treat it
+as a collection variable.
+
+Never put real passwords in a normal inventory or literal `-e
+password=value` arguments. Use Ansible Vault for fixed secrets; generated
+credentials are stored on the control node as described below.
+
+Each role README documents its public variables, defaults, required values,
+and effects. The workspace role groups its variables by function.
+
+| Role | Variable reference |
+|---|---|
+| `docker` | [Role README](../roles/docker/README.md) |
+| `kasm` | [Role README](../roles/kasm/README.md) |
+| `kasm_credentials` | [Role README](../roles/kasm_credentials/README.md) |
+| `kasm_docker_image` | [Role README](../roles/kasm_docker_image/README.md) |
+| `kasm_group` | [Role README](../roles/kasm_group/README.md) |
+| `kasm_session` | [Role README](../roles/kasm_session/README.md) |
+| `kasm_uninstall` | [Role README](../roles/kasm_uninstall/README.md) |
+| `kasm_user` | [Role README](../roles/kasm_user/README.md) |
+| `kasm_workspace` | [Role README](../roles/kasm_workspace/README.md) |
+| `linux_user` | [Role README](../roles/linux_user/README.md) |
+| `student` | [Role README](../roles/student/README.md) |
+
+Encrypted variable files can be passed with `-e @vault.yml --ask-vault-pass`.
 
 ## 2. Install Kasm (`pepesan.kasm.site_kasm`)
 
@@ -80,7 +121,7 @@ Everything is created on **your machine**, in the directory you run from, and is
 | `.credentials/<host>-kasm-user.pass` | Password of the built-in `user@kasm.local` |
 | `.credentials/<host>-kasm-user-<username>.pass` | Password of a user created with `kasm_user` |
 | `access-data-<inventory file name>.csv` | One row per node; first column `kasm_url`, sorted by the full Kasm URL: IP, inventory name, student username/password and Kasm admin/normal-user credentials |
-| `kasm-api-key-<ip>.json` | Copy of the persistent API key (created with the first workspace) |
+| `kasm-api-key-<inventory_hostname>.json` | Copy of the persistent API key (created with the first workspace) |
 
 Passwords are generated **once** and reused on later runs. To get new ones, delete `.credentials/` before running the
 install. Any of them can be fixed with a parameter instead: `-e student_password_plain=...`,
