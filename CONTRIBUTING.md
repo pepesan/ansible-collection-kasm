@@ -89,6 +89,48 @@ example.
 
 Short imperative summary on the first line, then a body that says *why*. One logical change per commit.
 
+## Branches and pull requests
+
+This repository uses a lightweight Gitflow.
+
+Choose the branch that matches your change:
+
+- For a feature or ordinary fix, start from `develop`, create a branch such as `feature/dind-workspace` or
+  `fix/debian-user`, and target your pull request at `develop`.
+- For a release, create `release/<version>` from `develop`, for example `release/0.1.0`. Keep it limited to release
+  preparation and release-blocking fixes, then target its pull request at `main`. After it merges, synchronize any
+  release-only changes into `develop`, normally with a pull request from `main` to `develop`.
+- For an urgent production fix, create `hotfix/<version>` from `main`, target its pull request at `main`, and then
+  bring the fix back into `develop`.
+
+For example, to start a feature branch:
+
+```bash
+git fetch origin
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/my-change
+```
+
+Before opening a pull request, run the local checks in [Checking a change](#checking-a-change). Explain the reason for
+the change, summarize its impact, and include test or end-to-end evidence when relevant. Push your branch and open a
+pull request against the target branch above.
+
+Pull requests targeting `main` or `develop` need approval from the repository owner, `@pepesan`, and all required CI
+checks must pass before merging. Request that review and wait for approval; do not merge your own pull request. GitHub
+does not allow authors to approve their own changes, so a pull request authored by `@pepesan` needs an independent
+reviewer. Other branches do not require approval, but pull requests are still recommended for review and a clear
+history.
+
+The `CI` workflow runs for pull requests and for pushes to `main` and `develop`. It checks lint, the collection build
+and documentation examples, and the Molecule scenarios for `linux_user`, `student`, and `kasm_credentials`. Wait for
+the pull-request checks to pass before merging. A push to `main` or `develop` runs CI again after the merge. CI does
+not deploy to a real Kasm server; follow [*End-to-end on a real server*](#end-to-end-on-a-real-server) for changes that
+need live-server evidence.
+
+For release-version changes, follow [Releases](#releases), including its manual dry run before creating the version
+tag.
+
 ## Releases
 
 The version is in `galaxy.yml` and follows [Semantic Versioning](https://semver.org/). Add the change to `CHANGELOG.md`.
