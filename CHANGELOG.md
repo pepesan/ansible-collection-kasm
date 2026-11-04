@@ -5,11 +5,26 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-04
+
+### Added
+- `kasm_session` now installs a per-session systemd unit by default. It waits for healthy Kasm API, manager, and agent components, then recovers only the existing workspace container after a reboot.
+- Added tested server support for Rocky Linux 9/10 and AlmaLinux 9/10.
+- Added an example two-machine inventory and Rocky/AlmaLinux 10 VM image builders from official ISOs.
+
 ### Fixed
 - The example dependency installer now refreshes pre-existing Galaxy roles to the versions pinned in `requirements.yml` instead of retaining stale versions.
+- `linux_user` now sets the user's same-name group as primary, including on distributions that default accounts to a shared group such as Rocky Linux.
+- Local Rocky/Alma ISO and VM image builders now live under `scripts/images`; generated workspaces remain ignored and are excluded from Galaxy packaging with the rest of `scripts`.
+- The credentials CSV now places `student_user` immediately after `ip`, before `nombre` and `student_password`.
+- The credentials CSV directory stays private (`0700`), avoiding a looser permission reset on each example install rerun.
+- The Docker role enables EPEL on Rocky/AlmaLinux before installing `python3-docker`, which is not provided by their default repositories.
+- `kasm_session` retries transient launch refusals for up to three minutes by default, so a just-registered large workspace can finish staging before the session request gives up.
 
 ### Changed
-- Numbered the example scripts sequentially from `00_install_dependencies.sh`.
+- Numbered the example scripts sequentially from `00_install_dependencies.sh`; expanded the self-contained deployment guide and inventory examples.
+- Promoted Rocky Linux 10 and AlmaLinux 10 to supported server platforms after passing no-TLS end-to-end validation.
+- Release CI now runs lint, package/example checks, and the supported Molecule scenarios before building the collection.
 
 ## [0.0.3] - 2026-11-02
 

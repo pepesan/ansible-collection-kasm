@@ -2,6 +2,7 @@
 - name: Converge
   hosts: all
   tasks:
+
     - name: Include the linux_user role
       ansible.builtin.include_role:
         name: pepesan.kasm.linux_user

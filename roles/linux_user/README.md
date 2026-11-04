@@ -3,9 +3,9 @@
 **Fully qualified name:** `pepesan.kasm.linux_user` (collection [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Generic, reusable role: creates a Linux user with a random password
-persisted on the control node, and ensures its own group plus any extra
-groups (e.g. `docker`, `sudo`) exist first — so it works even if nothing
-else created those groups yet.
+persisted on the control node, sets the user's same-name private group as
+the primary group, and ensures any extra groups (e.g. `docker`, `sudo`)
+exist first — even if nothing else created those groups yet.
 
 Not specific to this project or to Kasm at all. [`student`](../student/README.md)
 is a thin wrapper around this role that just fixes the username to `student`

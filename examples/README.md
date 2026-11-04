@@ -4,12 +4,55 @@ Run every command from this directory. The wrappers set `ansible.cfg` from
 their own location, accept the inventory path explicitly, and keep generated
 credentials outside the checkout.
 
+## Script reference
+
+| Script | Purpose and arguments |
+|---|---|
+| `00_install_dependencies.sh` | Install this checkout, its collection dependencies, and pinned third-party roles. No arguments. |
+| `01_preflight_inventory.sh [inventory]` | Validate inventory structure only; no SSH connection. Defaults to `./inventory`. |
+| `02_preflight_dns_tls.sh <inventory> <base_domain>` | Check public DNS and trusted HTTPS for an already-running Kasm endpoint. |
+| `03_install_default_domain.sh <inventory>` | Install with placeholder `example.com`; demonstration only, not for a public deployment. |
+| `04_install_custom_domain.sh <inventory> <base_domain> <email>` | Install for a real domain after the DNS preflight passes. |
+| `05_install_no_tls.sh <inventory>` | Install without Let's Encrypt; intended for local or DNS-less testing. |
+| `06_workspace_create.sh <inventory> [image] [name]` | Register a workspace; defaults to `pepesan/mi-ubuntu-resolute-kasm:1.0`. |
+| `07_workspace_create_custom_image.sh <inventory> <image> <name>` | Register the specified image; references containing `dind` are made privileged. |
+| `08_workspace_delete.sh <inventory> <image> [keep_profiles]` | Delete a workspace; persistent profiles are deleted unless `keep_profiles` is supplied. |
+| `09_kasm_session.sh <inventory> <present\|absent> <username> <image> [recover_on_boot]` | Start or destroy a session; boot recovery is enabled by default and can be disabled with `false`. |
+| `10_kasm_user.sh <inventory> <present\|absent> <username>` | Create or delete a Kasm user. |
+| `11_kasm_uninstall.sh <inventory>` | **Destructive:** remove the Kasm installation and its data from the target host. |
+
+## Recommended first deployment
+
+The numbered sections below explain each step. For a new public deployment:
+
+1. Install dependencies with `00_install_dependencies.sh`.
+2. Copy `inventory.example` to `inventory` for one host, or use
+   `inventory.two-machines` for two hosts. Replace all placeholders.
+3. Run `01_preflight_inventory.sh`; the install playbook checks public DNS
+   before making changes.
+4. Install with `04_install_custom_domain.sh`, using the inventory's base
+   domain and an email you monitor.
+5. After installation, run `02_preflight_dns_tls.sh` to verify DNS and the
+   trusted HTTPS endpoint.
+6. Register a workspace with `06_workspace_create.sh` or
+   `07_workspace_create_custom_image.sh`; create a test user with
+   `10_kasm_user.sh`, then start a session with `09_kasm_session.sh`.
+   Verify it in Kasm, stop the session with state `absent`, and remove the test
+   user with `10_kasm_user.sh` using state `absent`.
+7. Remove test resources only when they are no longer needed. `08_workspace_delete.sh`
+   deletes persistent profiles by default; use `11_kasm_uninstall.sh` only on a
+   disposable host.
+
 ## 1. Install Ansible dependencies
 
-Prerequisites on the control node: `ansible-core` 2.15+, `ansible-galaxy`,
-`jq`, and network access to Ansible Galaxy and Docker Hub. Install Ansible
-using your OS/package manager or Python environment; do not run Galaxy
-installation as root.
+Prerequisites on the control node: Bash, `ansible-core` 2.15+, `jq`, `realpath`,
+the OpenSSH client, and standard utilities (`install`, `mktemp`, `tee`). The
+control node needs outbound access to Ansible Galaxy and HTTPS access to
+`cloudflare-dns.com` for the DNS/TLS preflight. The target must be reachable
+over SSH; use root or configure an account with privilege escalation in the
+inventory. The Kasm server needs outbound access to the image registry when
+pulling workspace images. Install Ansible using your OS package manager or
+Python environment; do not run Galaxy installation as root.
 
 ```bash
 cd /path/to/ansible-collection-kasm/examples
@@ -40,6 +83,20 @@ cp -n inventory.example inventory
 chmod 600 inventory
 ```
 
+Choose only one template. For two hosts, use this alternative copy command
+instead of the `inventory.example` copy above:
+
+```bash
+umask 077
+cp -n inventory.two-machines inventory
+chmod 600 inventory
+```
+
+Replace both `ansible_host=X.X.X.X` values with their SSH target addresses.
+If Ansible connects to private addresses, set each host's
+`kasm_dns_expected_ips` to the corresponding public address. The tracked file
+is a template; the local `inventory` copy remains ignored by Git.
+
 The local `inventory` file is ignored by Git and is not included in the
 collection. Keep it mode `600`; do not commit it.
 
@@ -59,18 +116,24 @@ letsencrypt_email=admin@example.com
 
 Its structure:
 
-- `[kasm]` is the group of managed servers. Add one line per machine; the
-  first value is the SSH target (IP address or hostname). Replace the sample
-  address with the real target.
-- `node_name` is that machine's unique DNS name prefix. For example,
-  `node_name=kasmdemo` and `kasm_base_domain=kasm.example.com` form
-  `kasmdemo.kasm.example.com`. Give each machine a different `node_name`.
-- `[kasm:vars]` holds variables shared by those machines. `ansible_user=root`
+- `[kasm]` is the group of managed servers. Add one line per host. The first
+  value is the inventory name; when it is an alias rather than the SSH target,
+  `ansible_host` supplies the connection address.
+- `node_name` is the unique DNS name prefix for each machine. For example,
+  `node_name=kasmdemo-01` with `kasm_base_domain=kasm.example.com` forms
+  `kasmdemo-01.kasm.example.com`. Use a different `node_name` for every host.
+- `ansible_host` is the SSH target and, by default, the address checked by the
+  install-time DNS preflight. DNS A/AAAA records for each
+  `node_name.<kasm_base_domain>` must resolve to its public address. If SSH
+  uses a private address, set that host's `kasm_dns_expected_ips` to its
+  public address. Behind a proxy/load balancer, `kasm_dns_expected_ips: []`
+  requires public DNS records without comparing their addresses.
+- `[kasm:vars]` holds variables shared by the hosts. `ansible_user=root`
   connects over SSH as root, so `ansible_become=false`. With a non-root SSH
   account, set `ansible_user` to that account and enable `ansible_become`.
 - `kasm_base_domain` is the shared DNS suffix. The DNS/TLS preflight and the
-  custom-domain installer must use the same base domain; its A/AAAA record
-  must resolve to the corresponding server.
+  custom-domain installer must use the same base domain; each host's DNS record
+  must resolve to its corresponding server.
 - `kasm_training_project` is an optional course/project label used in the
   credentials role's dated CSV filename when no exact CSV name is supplied.
   The example scripts supply an exact inventory-based CSV name, so this
@@ -93,13 +156,13 @@ data, so pointing it at `examples/` is not safe. Set it for one command:
 KASM_DATA_DIR="$HOME/mi-directorio-kasm" ./01_preflight_inventory.sh ./inventory
 ```
 
-To reuse the same location for several commands in the current terminal, export
-it first:
+To reuse the same location for subsequent commands in the current terminal,
+export it first:
 
 ```bash
 export KASM_DATA_DIR="$HOME/mi-directorio-kasm"
 ./01_preflight_inventory.sh ./inventory
-./02_preflight_dns_tls.sh ./inventory kasm.example.com
+# Keep this export for installation and workspace commands below.
 ```
 
 Without an override, the scripts use `$HOME/pepesan-kasm-data`. Relative
@@ -107,29 +170,72 @@ override paths resolve from the caller's current directory. The wrapper changes
 into the private directory before Ansible runs. In another terminal, set the
 same value before following the logs; otherwise use the default path:
 
+### Generated data, permissions, and retention
+
+The wrappers create `KASM_DATA_DIR` and `.credentials/` with mode `700`, then
+run Ansible from that private directory. Generated password files under
+`.credentials/` use mode `600`. The CSV task sets `csv/` to mode `755`, but
+these wrappers keep it below the mode-`700` `KASM_DATA_DIR`; the CSV file
+itself is mode `600`.
+
+| Content | Default location | Notes |
+|---|---|---|
+| Generated passwords | `$KASM_DATA_DIR/.credentials/` | Per-host `student`, built-in Kasm admin/user, and `kasm_user` passwords; mode `600`. |
+| Access CSV | `$KASM_DATA_DIR/csv/access-data-<inventory-basename>.csv` | Contains student and built-in Kasm passwords; mode `600`. |
+| Local API key copy | `$KASM_DATA_DIR/kasm-api-key-<inventory-hostname>.json` | Created when registering a workspace; mode `600`. |
+| Ansible logs | `$KASM_DATA_DIR/logs/install.log` and `workspace-deploy.log` | These examples create the directory as `700` and log files as `600`. |
+| Kasm installer log | Server, by default `/opt/kasm/data/opt/kasm_deploy.log` | Mode `600`, readable by root; the installer redacts password, secret, and token fields. |
+
+The control-node files are not removed by `10_kasm_user.sh` or
+`11_kasm_uninstall.sh`. Deleting an application user leaves its generated
+password file and CSV entry in place. Treat the CSV and `.credentials/` as
+secrets: do not commit, email, or attach them to issue reports. If policy
+requires a backup, keep it encrypted and access-restricted. Before uninstalling
+Kasm, back up any server-side data you need; the uninstall role removes it.
+
 To inspect your local inventory from this directory:
 
 ```bash
 ansible-inventory --graph
 ```
 
+With `inventory.two-machines`, this should show both `kasm01` and `kasm02`
+under the `kasm` group.
+
 ## 3. Validate inventory, DNS, and TLS
 
-The inventory preflight checks the collection group and `node_name`; it makes
-no SSH connection. The DNS/TLS preflight is read-only: it checks public A/AAAA
-records against `ansible_host` (or the inventory hostname), then verifies
-HTTPS from the control node with certificate validation enabled.
+The inventory preflight checks the `[kasm]` group and requires a unique,
+non-empty `node_name` for every host; it makes no SSH connection. For a
+Let's Encrypt install, `site_kasm` checks public A/AAAA DNS from the control
+node before running installation roles. By default it compares the resolved
+addresses with each host's `kasm_dns_expected_ips` (derived from
+`ansible_host`, or the inventory name if that is unset).
+
+If a host fails DNS preflight, its installation roles do not run; other hosts
+continue, and the final summary lists the failed host and domain. Common
+failures:
+
+- `public DNS returned no A or AAAA records`: create the required public DNS
+  record for that host's `node_name.<kasm_base_domain>`.
+- `public DNS addresses do not match kasm_dns_expected_ips`: correct the DNS
+  record or expected public address. For NAT, use the public address rather
+  than the private SSH address; for a proxy/load balancer, use an empty
+  `kasm_dns_expected_ips` list to require records without comparing addresses.
+- `could not query Cloudflare public DNS over HTTPS from the Ansible control node`:
+  allow outbound HTTPS from the control node to `cloudflare-dns.com`.
 
 ```bash
 INVENTORY=./inventory
 ./01_preflight_inventory.sh "$INVENTORY"
-./02_preflight_dns_tls.sh "$INVENTORY" kasm.example.com
 ```
 
-The DNS check requires public records and a matching expected address. The
-TLS check requires the service to be running and its certificate to be trusted
-for the resulting `node_name.<base_domain>`. The preflight does not check
-port 80; Let's Encrypt's HTTP-01 challenge requires it during installation.
+Run `02_preflight_dns_tls.sh` only when Kasm is already running: its HTTPS
+check cannot pass before a first installation. The `04_install_custom_domain.sh`
+script performs the DNS preflight itself before installation roles run.
+The standalone DNS/TLS check also requires matching public A/AAAA records,
+a trusted certificate for `node_name.<base_domain>`, and a running Kasm
+service. It does not check port 80; Let's Encrypt's HTTP-01 challenge requires
+port 80 to be reachable during installation.
 
 ## 4. Install Kasm with TLS
 
@@ -146,7 +252,13 @@ install -m 600 /dev/null "$LOG_DIR/install.log"
 ```
 
 Use the base domain configured in your inventory and an email you control for
-Let's Encrypt. The other installation scripts are examples only:
+Let's Encrypt. After installation completes, verify DNS and trusted HTTPS:
+
+```bash
+./02_preflight_dns_tls.sh "$INVENTORY" kasm.example.com
+```
+
+The other installation scripts are examples only:
 `03_install_default_domain.sh` uses `example.com`, and
 `05_install_no_tls.sh` disables Let's Encrypt. Do not use those for a public
 deployment.
@@ -213,6 +325,19 @@ NAME=example-dind
 ./08_workspace_delete.sh "$INVENTORY" "$IMAGE"
 ```
 
+By default, `09_kasm_session.sh` installs a per-session systemd unit. After a
+host reboot, it waits for host and nested Docker plus healthy Kasm API, manager,
+and agent. It starts the same session container only if it is `created` or
+`exited`, checks stability for 15 seconds, and never replaces the session.
+`absent` removes the unit. Disable boot recovery for a present session with:
+
+```bash
+./09_kasm_session.sh "$INVENTORY" present user@kasm.local "$IMAGE" false
+```
+
+This restarts the same container, but cannot restore processes interrupted by
+the host shutdown.
+
 For the desktop image, use `IMAGE=pepesan/mi-ubuntu-resolute-kasm-desktop:1.0`
 and `NAME=example-desktop`. For a DinD image, session startup also checks
 that the nested Docker daemon responds to `docker info`. If Kasm reports the
@@ -220,9 +345,12 @@ session as paused, the playbook defers that check; connect to that same
 session and rerun the playbook to verify Docker.
 
 `06_workspace_create.sh` accepts the inventory and optional image/name; its
-default image is `pepesan/mi-ubuntu-resolute-kasm:1.0`. Workspace deletion
-removes the registered image and, by default, that workspace's persistent
-profiles. Use `keep_profiles` only when retaining those files is intended.
+default image is `pepesan/mi-ubuntu-resolute-kasm:1.0`. `08_workspace_delete.sh`
+closes active sessions using the workspace, unregisters it, and deletes its
+persistent profile directories by default. It also tries to remove the
+associated image and prune unused layers; a shared image tag can prevent image
+removal. Profile deletion is irreversible; pass `keep_profiles` only when
+retaining those directories is intentional.
 
 ## 6. Create and delete a Kasm user
 
@@ -236,6 +364,10 @@ TEST_USER=kasm-example-test@example.com
 ./10_kasm_user.sh "$INVENTORY" absent "$TEST_USER"
 ```
 
+Deleting the Kasm account leaves its local password file and CSV entry. The
+user role does not clean up persistent profiles; workspace deletion affects
+every user of that workspace, so do not use it just to remove one user's data.
+
 The key bootstrapped by the workspace role was verified for user listing,
 creation, and deletion on Kasm 1.19.0. Manually supplied keys need the
 corresponding Users View/Create/Delete permissions.
@@ -243,15 +375,17 @@ corresponding Users View/Create/Delete permissions.
 ## 7. Uninstall and restore the test server
 
 `11_kasm_uninstall.sh` is destructive: it removes Kasm's database, workspaces,
-sessions, profiles, install files, and cached Docker image. It keeps the host's
-Let's Encrypt certificate by default. Run it only against a disposable test
-server, then reinstall with the real domain and email:
+sessions, profiles, install files, and cached Docker image from the server.
+It keeps the host's Let's Encrypt certificate by default. It does not remove
+the control-node `KASM_DATA_DIR` or the credentials stored there. Run it only
+against a disposable test server, then reinstall with the real domain and
+email:
 
 ```bash
 ./11_kasm_uninstall.sh "$INVENTORY"
-./04_install_custom_domain.sh "$INVENTORY" kasm.example.com admin@example.com \
+./04_install_custom_domain.sh "$INVENTORY" kasm.example.com admin@example.com
 ./02_preflight_dns_tls.sh "$INVENTORY" kasm.example.com
 ```
 
-See the [usage guide](../docs/usage.md) for playbook variables, credential
-files, and further operational details.
+See the [usage guide](../docs/usage.md) for variable precedence, per-role
+variable references, credential files, and further operational details.

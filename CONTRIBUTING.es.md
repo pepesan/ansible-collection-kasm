@@ -32,21 +32,44 @@ debe acabar nunca en él.
 
 ## Comprobar un cambio
 
-Necesita `ansible-core`, `ansible-lint`, `yamllint` y, para Molecule, `molecule` y Docker.
+Ejecute en local, uno por uno, los mismos gates que usan CI y la publicación:
 
 ```bash
-ansible-lint                      # perfil production, configurado en .ansible-lint
+ansible-lint
 yamllint .
-scripts/check-examples.sh         # cada play YAML de la documentación pasa --syntax-check
-scripts/check-build.sh            # construye el tarball, lo inspecciona y lo instala en un entorno limpio
-scripts/molecule.sh student       # Molecule de un rol, con nombres completos
+scripts/check-build.sh
+scripts/check-examples.sh
+scripts/molecule.sh linux_user test
+scripts/molecule.sh student test
+scripts/molecule.sh kasm_credentials test
 ```
 
-Solo tres roles tienen escenario de Molecule, porque son los que se pueden probar en un contenedor aislado: `linux_user`,
-`student` y `kasm_credentials`. El resto lo cubren `ansible-lint` (todos) y la prueba de extremo a extremo contra un servidor real,
-no Molecule: `docker`, `kasm` y `kasm_uninstall` cargan módulos del kernel y fijan valores de sysctl, lo que dentro de un contenedor
-privilegiado afecta al kernel **del anfitrión**, y `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` y `kasm_docker_image`
-necesitan un Kasm vivo. La prueba de extremo a extremo no forma parte del CI: se ejecuta a mano antes de publicar una versión.
+`check-build.sh` comprueba el archivo de la colección, hace una instalación limpia, resuelve los playbooks por nombre y ejecuta
+Galaxy importer. `check-examples.sh` valida la sintaxis de todos los playbooks YAML documentados. El workflow de publicación
+ejecuta estos checks antes de construir o publicar.
+
+Solo tres roles tienen escenario de Molecule porque se pueden probar en un contenedor aislado: `linux_user`, `student` y
+`kasm_credentials`. El resto se cubre con `ansible-lint` y pruebas manuales de extremo a extremo, no con Molecule: `docker`,
+`kasm` y `kasm_uninstall` cargan módulos del kernel y fijan sysctl, lo que dentro de un contenedor privilegiado afecta al kernel
+**del anfitrión**; `kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user` y `kasm_docker_image` necesitan un Kasm activo.
+Consulte [`MATRIX.md`](MATRIX.md), en inglés, para ver la evidencia de compatibilidad y los escenarios aún no verificados. CI
+no se conecta a servidores reales.
+
+### Prueba de extremo a extremo en un servidor real
+
+Para cambios de instalación o de los roles Kasm, use un servidor desechable con un sistema operativo de la matriz de
+[`MATRIX.md`](MATRIX.md):
+
+1. Construya e instale la colección desde su copia en un directorio temporal e instale los roles de terceros desde
+   `requirements.yml`, para probar el código actual.
+2. Mantenga el inventario **fuera del repositorio** y guarde cada ejecución en un log:
+   `ansible-playbook ... 2>&1 | tee e2e.log`.
+3. Ejecute `pepesan.kasm.site_kasm` dos veces y compruebe que la segunda no cambia nada. Pruebe operaciones de workspace,
+   sesión y usuario.
+4. Para probar persistencia tras reinicio, use exactamente una sesión existente: cree un fichero en su home, reinicie, recupere
+   esa misma sesión y compruebe el fichero y el ID. No cree una segunda sesión ni un workspace de reemplazo.
+5. Guarde resultados sin datos sensibles y las versiones del entorno en el log privado. No declare aprobada una plataforma o
+   escenario sin evidencia.
 
 ### De extremo a extremo en un servidor real
 
@@ -76,6 +99,25 @@ Un resumen corto en imperativo en la primera línea y luego un cuerpo que expliq
 
 ## Versiones
 
-La versión está en `galaxy.yml` y sigue el [Versionado Semántico](https://semver.org/lang/es/). Añada el cambio a `CHANGELOG.md`. Las
-versiones publicadas en Ansible Galaxy no se pueden sobrescribir, así que construya y revise antes el tarball
-(`scripts/check-build.sh`).
+La versión está en `galaxy.yml` y sigue el [Versionado Semántico](https://semver.org/lang/es/). Añada los cambios a
+`CHANGELOG.md`. Las versiones publicadas en Ansible Galaxy no se pueden sobrescribir.
+
+Ejecute solo uno de estos comandos para incrementar `galaxy.yml`:
+
+```bash
+python3 scripts/bump_version.py patch
+python3 scripts/bump_version.py minor
+python3 scripts/bump_version.py major
+```
+
+El script solo modifica `galaxy.yml`; actualice manualmente `Unreleased` en `CHANGELOG.md`. No hace commit, tag, push ni
+publica.
+
+Antes de crear una etiqueta:
+
+1. Ejecute secuencialmente todos los comandos de **Comprobar un cambio** y revise el tarball para confirmar que no contiene datos privados.
+2. Inicie manualmente el workflow `Release`: valida y construye el paquete, pero el dry run no publica.
+3. Compruebe que `vX.Y.Z` coincide con `galaxy.yml`. Al subir la etiqueta se publica en Galaxy y se crea la GitHub Release;
+   se necesita el secret `GALAXY_API_KEY`.
+4. Si el cambio requiere validar comportamiento de servidor, complete y registre aparte la prueba E2E manual. CI no despliega
+   en servidores reales.

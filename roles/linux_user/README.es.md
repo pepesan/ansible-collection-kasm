@@ -3,9 +3,9 @@
 **Nombre completo:** `pepesan.kasm.linux_user` (colección [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Rol genérico y reutilizable: crea un usuario Linux con una contraseña
-aleatoria persistida en el nodo de control, y asegura que su propio grupo
-más cualquier grupo adicional (ej. `docker`, `sudo`) existan antes —
-funciona incluso si nada más ha creado esos grupos todavía.
+aleatoria persistida en el nodo de control, establece como grupo principal
+el grupo privado con el mismo nombre del usuario y asegura que existan los
+grupos adicionales (ej. `docker`, `sudo`) aunque nada más los haya creado.
 
 No específico de este proyecto ni de Kasm en absoluto.
 [`student`](../student/README.es.md) es un wrapper fino sobre este rol que

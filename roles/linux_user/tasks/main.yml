@@ -18,6 +18,7 @@
 - name: Ensure the user exists
   ansible.builtin.user:
     name: "{{ linux_user_name }}"
+    group: "{{ linux_user_name }}"
     shell: "{{ linux_user_shell }}"
     state: present
     groups: "{{ [linux_user_name] + linux_user_extra_groups }}"

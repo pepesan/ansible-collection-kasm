@@ -9,6 +9,9 @@ Let's Encrypt certificate. Lets the [`kasm`](../kasm/README.md) role run again
 as a genuine fresh install afterwards, instead of hand-fixing a half-broken
 server over SSH.
 
+It also disables and removes per-session systemd recovery units installed by
+`kasm_session`.
+
 Not covered by any Galaxy role, and Kasm's own `install.sh` has no
 `--uninstall` flag — confirmed by grepping it directly on a live host.
 

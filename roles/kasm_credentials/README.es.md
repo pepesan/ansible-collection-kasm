@@ -8,11 +8,13 @@ del inventario (`access-data-<inventario>.csv`), una fila por nodo. Lo usa
 [`kasm`](../kasm/README.es.md) y lee el mismo fichero de contraseña `student`
 que genera [`student`](../student/README.es.md).
 
-Las columnas, en este orden, son `kasm_url`, `ip`, `nombre`, `student_user`,
+Las columnas, en este orden, son `kasm_url`, `ip`, `student_user`, `nombre`,
 `student_password`, `kasm_admin_user`, `kasm_admin_password`,
 `kasm_normal_user`, `kasm_normal_user_password`. Las filas se ordenan en orden
 ascendente por la URL completa de Kasm. `ip` procede de `ansible_host` y
 `nombre` es el alias del inventario.
+El directorio del CSV se crea con permisos `0700` y cada fichero CSV tiene
+permisos `0600`; otros usuarios locales no pueden leer las credenciales.
 
 No cubierto por ningún rol o collection de Galaxy — es contabilidad
 específica de Kasm sin equivalente upstream.

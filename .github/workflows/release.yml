@@ -17,15 +17,31 @@ permissions:
 
 jobs:
   publish:
-    name: Build and publish
+    name: Validate, build, and publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Install the tools
-        run: pip install ansible-core==2.21.5 pyyaml
+      - name: Install the CI tools
+        run: >-
+          pip install ansible-core==2.21.5 ansible-lint==26.10.1 yamllint==1.38.0
+          molecule==26.10.0 'molecule-plugins[docker]' pyyaml
+
+      - name: Install the collections and third-party roles
+        run: |
+          ansible-galaxy collection install -r requirements.yml
+          ansible-galaxy role install -r requirements.yml
+
+      - name: Install this collection for lint and Molecule
+        run: ansible-galaxy collection install . --force
+
+      - name: ansible-lint
+        run: ansible-lint
+
+      - name: yamllint
+        run: yamllint .
 
       - name: The tag must match the version in galaxy.yml
         if: github.ref_type == 'tag'
@@ -38,6 +54,17 @@ jobs:
 
       - name: Check the tarball (content, clean install, playbooks by name)
         run: scripts/check-build.sh
+      - name: Every YAML play in the documentation
+        run: scripts/check-examples.sh
+
+      - name: Molecule — linux_user
+        run: scripts/molecule.sh linux_user test
+
+      - name: Molecule — student
+        run: scripts/molecule.sh student test
+
+      - name: Molecule — kasm_credentials
+        run: scripts/molecule.sh kasm_credentials test
 
       - name: Build
         run: ansible-galaxy collection build --output-path dist

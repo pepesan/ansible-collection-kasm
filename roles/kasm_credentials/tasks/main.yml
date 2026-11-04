@@ -3,7 +3,7 @@
   ansible.builtin.file:
     path: "{{ kasm_credentials_csv_dir }}"
     state: directory
-    mode: "0755"
+    mode: "0700"
   delegate_to: localhost
   become: false
   run_once: true

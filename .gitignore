@@ -2,6 +2,8 @@
 PLAN.md
 CLAUDE.md
 AGENTS.md
+MATRIX.internal.md
+/scripts/images/work/
 
 # Secrets and data generated when the roles run: never commit them.
 .credentials/

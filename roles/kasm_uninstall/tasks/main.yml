@@ -1,4 +1,37 @@
 ---
+- name: Find boot-time Kasm session recovery units
+  ansible.builtin.find:
+    paths: "{{ kasm_session_recover_unit_dir }}"
+    patterns: "pepesan-kasm-session-*.service"
+    file_type: file
+  register: kasm_uninstall_session_recovery_units
+
+- name: Disable boot-time Kasm session recovery units
+  ansible.builtin.systemd_service:
+    name: "{{ item.path | basename }}"
+    state: stopped
+    enabled: false
+  loop: "{{ kasm_uninstall_session_recovery_units.files }}"
+
+- name: Remove boot-time Kasm session recovery units
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ kasm_uninstall_session_recovery_units.files }}"
+
+- name: Reload systemd after removing Kasm session recovery
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - daemon-reload
+  changed_when: false
+  when: kasm_uninstall_session_recovery_units.matched | int > 0
+
+- name: Remove the Kasm session recovery helper
+  ansible.builtin.file:
+    path: "{{ kasm_session_recover_script }}"
+    state: absent
+
 - name: Check whether the Kasm compose file still exists
   ansible.builtin.stat:
     path: "{{ kasm_dir }}/compose.yaml"

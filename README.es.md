@@ -2,11 +2,12 @@
 
 [English](README.md)
 
-Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmweb.com/) en servidores Ubuntu y Debian: Docker, un
-usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo, workspaces, usuarios, sesiones y una
-desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
+Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmweb.com/) en servidores Ubuntu, Debian,
+AlmaLinux y Rocky Linux: Docker, un usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo,
+workspaces, usuarios, sesiones y desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
 
-> **Versión actual de Galaxy (0.0.3).** Probada de extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13 con Kasm 1.19.0.
+> **Versión actual de Galaxy (0.1.0).** Superó pruebas E2E sin TLS en servidores limpios Ubuntu 24.04/26.04, Debian 12/13,
+> AlmaLinux 9/10 y Rocky Linux 9/10 con Kasm 1.19.0.
 > Es un proyecto independiente, sin relación con Kasm Technologies ni respaldado por ella.
 
 ## Qué incluye
@@ -30,9 +31,11 @@ Los roles se usan por su nombre completo, por ejemplo `pepesan.kasm.kasm_workspa
 ## Requisitos
 
 - **Nodo de control:** `ansible-core` 2.15 o superior y acceso SSH como `root` al servidor.
-- **Servidor:** Ubuntu 24.04 o 26.04, o Debian 12 o 13 (todos probados), con los puertos 80 y 443 libres. Con TLS activado,
-  `site_kasm` comprueba los registros DNS públicos A/AAAA y la IP esperada antes de ejecutar cualquier rol de instalación.
-  Si falla un nodo, los demás continúan; el play final enumera los fallos DNS.
+- **Servidor:** Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 o Rocky Linux 9/10
+  (probados E2E sin TLS), con los puertos 80 y 443 libres. Con TLS activado,
+  `site_kasm` comprueba los registros DNS públicos A/AAAA y la IP esperada
+  antes de ejecutar cualquier rol de instalación. Si falla un nodo, los demás
+  continúan; el play final enumera los fallos DNS.
 - **Colecciones:** `community.docker`, `community.general` y `ansible.posix` se instalan solas con esta.
 - **Roles de terceros, que NO se incluyen** (una colección no puede depender de roles, así que hay que instalarlos aparte):
 
@@ -234,7 +237,10 @@ Los playbooks de la colección se lanzan por nombre:
 HTTPS/TLS de confianza). La primera instalación tarda varios minutos; envíe
 la salida a un log con `tee` y sígala con `tail -f`.
 
-La guía completa, con todas las variables y la tabla de problemas habituales, está en [docs/usage.es.md](docs/usage.es.md).
+La guía de uso reúne los valores por defecto más comunes, las referencias de
+variables de cada rol y la tabla de problemas habituales:
+[docs/usage.es.md](docs/usage.es.md).
+
 
 ## Contraseñas
 
@@ -259,9 +265,13 @@ primer campo y las filas ordenadas por esa URL. **No suba nunca a un repositorio
   y `kasm_credentials`. El script rechaza a propósito los roles que tocan el kernel del anfitrión.
 - Los roles que hablan con un Kasm vivo (`kasm_workspace`, `kasm_session`, `kasm_group`, `kasm_user`, `kasm_docker_image`) no
   se pueden ejecutar en un contenedor aislado, así que se verifican de extremo a extremo contra un servidor real.
-- Extremo a extremo en servidores limpios Ubuntu 24.04 y 26.04 y Debian 12 y 13: instalación completa, repetición (sin cambios), workspace, sesión, usuario, desinstalación y reinstalación.
+- E2E sin TLS en servidores limpios Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 y Rocky Linux 9/10
+  con Kasm 1.19.0: instalación completa, repetición idempotente, workspace DinD
+  privilegiado/sesión y Docker anidado, operaciones de usuario, desinstalación y reinstalación.
 
 Ver [CONTRIBUTING.es.md](CONTRIBUTING.es.md).
+
+La matriz de compatibilidad y la evidencia por escenario están en [MATRIX.md](MATRIX.md), en inglés.
 
 ## Repositorios relacionados
 
