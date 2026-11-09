@@ -92,6 +92,12 @@ cp -n inventory.two-machines inventory
 chmod 600 inventory
 ```
 
+YAML versions are also available: `inventory.example.yml` (one host) and
+`inventory.two-machines.yml` (two hosts). Copy the one you want to
+`inventory.yml` (`umask 077; cp -n inventory.example.yml inventory.yml;
+chmod 600 inventory.yml`; it is ignored by Git) and pass it explicitly, for
+example `./01_preflight_inventory.sh ./inventory.yml`.
+
 Replace both `ansible_host=X.X.X.X` values with their SSH target addresses.
 If Ansible connects to private addresses, set each host's
 `kasm_dns_expected_ips` to the corresponding public address. The tracked file
