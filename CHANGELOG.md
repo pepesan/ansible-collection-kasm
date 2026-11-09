@@ -5,6 +5,15 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-09
+
+### Added
+- Added YAML inventory templates (`examples/inventory.example.yml` and `examples/inventory.two-machines.yml`) and documented their usage.
+
+### Changed
+- Clarified the Gitflow contribution workflow and branch protection documentation.
+- Reordered and renumbered example deployment scripts so installation preflights and workflows precede post-install DNS/TLS verification (`02_install_custom_domain.sh`, `03_install_default_domain.sh`, `04_preflight_dns_tls.sh`).
+
 ## [0.1.0] - 2026-11-04
 
 ### Added

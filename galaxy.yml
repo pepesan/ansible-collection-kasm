@@ -1,7 +1,7 @@
 ---
 namespace: pepesan
 name: kasm
-version: 0.1.0
+version: 0.1.1
 readme: README.md
 authors:
   - David Vaquero <pepesan@gmail.com>
@@ -36,20 +36,36 @@ build_ignore:
   - .ansible
   - .ansible-lint
   - .yamllint
+  - .claude
+  - .idea
+  - .vscode
   - scripts
   - __pycache__
-  - "*.pyc"
+  - "**/*.pyc"
+  - "**/__pycache__"
   - AGENTS.md
   - CLAUDE.md
   - PLAN.md
+  - MATRIX.internal.md
   - "*.tar.gz"
-  - "*.log"
+  - "**/*.log"
+  - "**/*.pid"
+  - "**/*.retry"
   - .credentials
   - .credenciales
+  - "**/.credentials"
+  - "**/.credenciales"
+  - "**/*.pass"
+  - "**/*-salt.txt"
+  - "**/*.csv"
   - "access-data-*"
   - "datos-acceso-*"
   - "kasm-api-key-*"
+  - "**/kasm-api-key-*"
   - "inventory-*"
+  - "**/inventory-*"
   - examples/inventory
+  - examples/inventory.yml
+  - examples/inventory.yaml
   - "**/molecule"
   - "geerlingguy.*"
