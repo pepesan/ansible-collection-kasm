@@ -122,9 +122,9 @@ does not allow authors to approve their own changes, so a pull request authored 
 reviewer. Other branches do not require approval, but pull requests are still recommended for review and a clear
 history.
 
-The `CI` workflow runs for pull requests and for pushes to `main` and `develop`. It checks lint, the collection build
+The `CI` workflow runs for pull requests and for pushes to `develop`. It checks lint, the collection build
 and documentation examples, and the Molecule scenarios for `linux_user`, `student`, and `kasm_credentials`. Wait for
-the pull-request checks to pass before merging. A push to `main` or `develop` runs CI again after the merge. CI does
+the pull-request checks to pass before merging. A push to `develop` runs CI again after the merge. CI does
 not deploy to a real Kasm server; follow [*End-to-end on a real server*](#end-to-end-on-a-real-server) for changes that
 need live-server evidence.
 
