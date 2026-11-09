@@ -5,6 +5,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-09
+
+### Changed
+- Refactored the Release workflow into modular, parallel stages (fast validation, parallel Molecule matrix for all roles, build and documentation checks, and final publishing).
+
 ## [0.1.1] - 2026-11-09
 
 ### Added
