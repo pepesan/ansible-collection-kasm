@@ -2,7 +2,7 @@
 name: Release
 
 # Publishes the collection on Ansible Galaxy when a version tag is pushed
-# (for example v0.0.1). It needs the GALAXY_API_KEY secret of the repository.
+# (for example v0.1.1). It needs the GALAXY_API_KEY secret of the repository.
 #
 # It can also be started by hand ("Run workflow", or `gh workflow run release.yml`) as a DRY RUN: it
 # builds and checks everything exactly as for a release but does not publish and does not create
@@ -15,34 +15,26 @@ on:
 permissions:
   contents: write   # to create the GitHub release
 
+env:
+  PYTHON_VERSION: "3.13"
+
 jobs:
-  publish:
-    name: Validate, build, and publish
+  validate:
+    name: Validate (lint and version)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install the CI tools
-        run: >-
-          pip install ansible-core==2.21.5 ansible-lint==26.10.1 yamllint==1.38.0
-          molecule==26.10.0 'molecule-plugins[docker]' pyyaml
-
+        run: pip install ansible-core==2.21.5 ansible-lint==26.10.1 yamllint==1.38.0 pyyaml
       - name: Install the collections and third-party roles
         run: |
           ansible-galaxy collection install -r requirements.yml
           ansible-galaxy role install -r requirements.yml
-
-      - name: Install this collection for lint and Molecule
+      - name: Install this collection for lint
         run: ansible-galaxy collection install . --force
-
-      - name: ansible-lint
-        run: ansible-lint
-
-      - name: yamllint
-        run: yamllint .
-
       - name: The tag must match the version in galaxy.yml
         if: github.ref_type == 'tag'
         run: |
@@ -51,24 +43,62 @@ jobs:
             echo "Tag ${GITHUB_REF_NAME} does not match galaxy.yml version ${version}" >&2
             exit 1
           fi
+      - name: ansible-lint
+        run: ansible-lint
+      - name: yamllint
+        run: yamllint .
 
+  build-check:
+    name: Build and documentation checks
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 pyyaml
       - name: Check the tarball (content, clean install, playbooks by name)
         run: scripts/check-build.sh
       - name: Every YAML play in the documentation
         run: scripts/check-examples.sh
 
-      - name: Molecule — linux_user
-        run: scripts/molecule.sh linux_user test
+  molecule:
+    name: Molecule (${{ matrix.role }})
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only the roles that are safe to run in a container: the others change
+        # the kernel of the machine or need a live Kasm (see CONTRIBUTING.md).
+        role: [linux_user, student, kasm_credentials]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the tools
+        run: pip install ansible-core==2.21.5 molecule==26.10.0 'molecule-plugins[docker]' pyyaml
+      - name: Install the collections
+        run: ansible-galaxy collection install -r requirements.yml
+      - name: Molecule
+        run: scripts/molecule.sh ${{ matrix.role }} test
 
-      - name: Molecule — student
-        run: scripts/molecule.sh student test
-
-      - name: Molecule — kasm_credentials
-        run: scripts/molecule.sh kasm_credentials test
-
-      - name: Build
+  publish:
+    name: Publish to Ansible Galaxy and GitHub Release
+    needs: [build-check, molecule]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ansible-core
+        run: pip install ansible-core==2.21.5
+      - name: Build collection tarball
         run: ansible-galaxy collection build --output-path dist
-
       - name: Publish on Ansible Galaxy
         if: github.ref_type == 'tag'
         env:
@@ -79,13 +109,11 @@ jobs:
             exit 1
           fi
           ansible-galaxy collection publish dist/*.tar.gz --token "${GALAXY_API_KEY}"
-
       - name: Dry run summary (nothing was published)
         if: github.ref_type != 'tag'
         run: |
-          echo "Dry run on ${GITHUB_REF_NAME}: tarball built and checked, NOT published."
-          ls -l dist/
-
+          echo "Dry run on ${GITHUB_REF_NAME}: all checks passed, tarball built and verified, NOT published."
+          ls -lh dist/
       - name: GitHub release with the tarball
         if: github.ref_type == 'tag'
         env:
