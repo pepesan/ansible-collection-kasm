@@ -16,6 +16,8 @@ datos-acceso-*.csv
 kasm-api-key-*.json
 inventory-*
 /examples/inventory
+/examples/inventory.yml
+/examples/inventory.yaml
 !examples/inventory.example
 # The role copies its CSV helper next to the playbook it is run from.
 /update_credentials_csv.py

@@ -1,0 +1,22 @@
+---
+# Replace each X.X.X.X with that host's SSH target address.
+# For private SSH, set kasm_dns_expected_ips to the public IP.
+all:
+  children:
+    kasm:
+      hosts:
+        kasm01:
+          ansible_host: X.X.X.X
+          node_name: kasmdemo-01
+        kasm02:
+          ansible_host: X.X.X.X
+          node_name: kasmdemo-02
+      vars:
+        ansible_user: root
+        ansible_become: false
+        # FQDNs:
+        # kasmdemo-01.kasm.example.com
+        # kasmdemo-02.kasm.example.com
+        kasm_base_domain: kasm.example.com
+        kasm_training_project: client-01
+        letsencrypt_email: admin@example.com

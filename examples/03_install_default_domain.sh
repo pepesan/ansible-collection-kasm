@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full install using example.com as a placeholder domain. Do not use for a real
-# public deployment; pass your own inventory and use 04_install_custom_domain.sh.
+# public deployment; pass your own inventory and use 02_install_custom_domain.sh.
 #
 # Usage: ./03_install_default_domain.sh <inventory>
 
