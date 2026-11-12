@@ -35,13 +35,12 @@
           - kasm_credentials_verify_csv_lines | length == 2
           - >-
             kasm_credentials_verify_csv_lines[0] ==
-            "kasm_url,ip,student_user,nombre,student_password,kasm_admin_user,kasm_admin_password,kasm_normal_user,kasm_normal_user_password"
+            "kasm_url,ip,student_user,student_password,kasm_admin_user,kasm_admin_password,kasm_normal_user,kasm_normal_user_password"
           - (kasm_credentials_verify_csv_lines[1] | split(','))[0] == "https://molecule.example.com"
           - >-
             (kasm_credentials_verify_csv_lines[1] | split(','))[1] ==
             (hostvars[inventory_hostname].ansible_host | default(inventory_hostname))
           - (kasm_credentials_verify_csv_lines[1] | split(','))[2] == "student"
-          - (kasm_credentials_verify_csv_lines[1] | split(','))[3] == inventory_hostname
     - name: Clean up the temp directory on the control node
       ansible.builtin.file:
         path: /tmp/molecule-kasm-credentials
