@@ -5,6 +5,17 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-12
+
+### Added
+- Example scripts now resolve their inventory from `ansible.cfg` (`./inventory`) by default; passing the inventory is now optional across all wrappers.
+- Credentials in `.credentials/` and access CSV files now use the `kasm_training_project` slug prefix when defined (`access-data-<project>.csv`).
+- Installation scripts now print a summary of generated credential directories and CSV paths upon completion.
+
+### Changed
+- Removed the obsolete `nombre` column from the access CSV.
+- Pinned GitHub Actions runners explicitly to `ubuntu-26.04`.
+
 ## [0.1.2] - 2026-11-09
 
 ### Changed

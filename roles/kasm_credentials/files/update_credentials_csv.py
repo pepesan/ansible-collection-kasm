@@ -26,7 +26,6 @@ COLUMNS = [
     "kasm_url",
     "ip",
     "student_user",
-    "nombre",
     "student_password",
     "kasm_admin_user",
     "kasm_admin_password",
@@ -95,10 +94,9 @@ def safe_csv_name(name):
 
 def normalize_row(row):
     """Maps current and legacy CSV schemas to the current column contract."""
-    return {
+    normalized = {
         "kasm_url": row.get("kasm_url", "") or "",
         "ip": row.get("ip", "") or "",
-        "nombre": row.get("nombre", "") or "",
         "student_user": row.get("student_user", "") or "",
         "student_password": row.get("student_password", "") or "",
         "kasm_admin_user": row.get("kasm_admin_user", "") or "",
@@ -108,22 +106,25 @@ def normalize_row(row):
             "kasm_normal_user_password", row.get("kasm_user_password", "")
         ) or "",
     }
+    if "nombre" in row and row["nombre"]:
+        normalized["nombre"] = row["nombre"]
+    return normalized
 
 
 def same_node(left, right):
-    """Identifies duplicate rows by either IP or inventory name."""
+    """Identifies duplicate rows by Kasm URL, IP, or legacy inventory name."""
     return (
-        bool(left.get("ip") and right.get("ip") and left["ip"] == right["ip"])
+        bool(left.get("kasm_url") and right.get("kasm_url") and left["kasm_url"] == right["kasm_url"])
+        or bool(left.get("ip") and right.get("ip") and left["ip"] == right["ip"])
         or bool(left.get("nombre") and right.get("nombre") and left["nombre"] == right["nombre"])
     )
 
 def row_sort_key(row):
-    """Sorts by the full Kasm URL, then IP and node name."""
+    """Sorts by the full Kasm URL, then IP."""
     return (
         not bool(row.get("kasm_url", "")),
         row.get("kasm_url", ""),
         row.get("ip", ""),
-        row.get("nombre", ""),
     )
 
 
@@ -142,7 +143,11 @@ def update_row(csv_path, ip, name, row):
     for existing in normalized_rows:
         # A legacy row keyed by inventory_hostname is the same node as the
         # new row keyed by ansible_host; remove both when either identity matches.
-        if existing["ip"] in (ip, name) or existing["nombre"] == name:
+        if (
+            (existing.get("kasm_url") and existing.get("kasm_url") == row.get("kasm_url"))
+            or existing.get("ip") in (ip, name)
+            or (existing.get("nombre") and existing.get("nombre") == name)
+        ):
             continue
         if any(same_node(existing, retained) for retained in remaining_rows):
             continue
@@ -151,12 +156,14 @@ def update_row(csv_path, ip, name, row):
     new_row = normalize_row(row)
     remaining_rows = [existing for existing in remaining_rows if not same_node(existing, new_row)]
     ordered_rows = sorted(remaining_rows + [new_row], key=row_sort_key)
-    if fieldnames == COLUMNS and normalized_rows == ordered_rows:
+    clean_normalized = [{k: r.get(k, "") for k in COLUMNS} for r in normalized_rows]
+    clean_ordered = [{k: r.get(k, "") for k in COLUMNS} for r in ordered_rows]
+    if fieldnames == COLUMNS and clean_normalized == clean_ordered:
         return False
 
     tmp_path = csv_path + ".tmp"
     with open(tmp_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMNS)
+        writer = csv.DictWriter(f, fieldnames=COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(ordered_rows)
     os.chmod(tmp_path, 0o600)
@@ -199,7 +206,6 @@ def main():
     row = {
         "kasm_url": args.kasm_url,
         "ip": args.ip,
-        "nombre": args.name,
         "student_user": args.student_user,
         "student_password": os.environ.get("STUDENT_PASSWORD", ""),
         "kasm_admin_user": args.kasm_admin_user,

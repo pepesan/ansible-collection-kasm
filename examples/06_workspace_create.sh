@@ -2,19 +2,32 @@
 # Create a workspace. Defaults to the project desktop image; image and name are
 # optional so the same script can register another supported image.
 #
-# Usage: ./06_workspace_create.sh <inventory> [image] [workspace_name]
-
+# Usage: ./06_workspace_create.sh [inventory] [image] [workspace_name]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
-if (($# < 1 || $# > 3)); then
-  printf 'Usage: %s <inventory> [image] [workspace_name]\n' "$0" >&2
-  exit 2
+if (($# == 0)); then
+  INVENTORY=""
+  IMAGE="pepesan/mi-ubuntu-resolute-kasm:1.0"
+  NAME="Example workspace"
+elif [[ -e "$1" || "$1" == *.ini || "$1" == *.yml || "$1" == *.yaml ]]; then
+  INVENTORY="$1"
+  IMAGE="${2:-pepesan/mi-ubuntu-resolute-kasm:1.0}"
+  NAME="${3:-Example workspace}"
+  if (($# > 3)); then
+    printf 'Usage: %s [inventory] [image] [workspace_name]\n' "$0" >&2
+    exit 2
+  fi
+else
+  INVENTORY=""
+  IMAGE="$1"
+  NAME="${2:-Example workspace}"
+  if (($# > 2)); then
+    printf 'Usage: %s [inventory] [image] [workspace_name]\n' "$0" >&2
+    exit 2
+  fi
 fi
-INVENTORY="$1"
-IMAGE="${2:-pepesan/mi-ubuntu-resolute-kasm:1.0}"
-NAME="${3:-Example workspace}"
 PRIVILEGED=false
 [[ "${IMAGE,,}" == *dind* ]] && PRIVILEGED=true
 NAME_JSON="$(jq -cn --arg name "${NAME}" '{kasm_workspace_name: $name}')"

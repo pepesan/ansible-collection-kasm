@@ -116,11 +116,11 @@ Everything is created on **your machine**, in the directory you run from, and is
 
 | File | What it holds |
 |---|---|
-| `.credentials/<host>-<student_name>.pass` | Password of the Linux user |
-| `.credentials/<host>-kasm-admin.pass` | Password of `admin@kasm.local` |
-| `.credentials/<host>-kasm-user.pass` | Password of the built-in `user@kasm.local` |
-| `.credentials/<host>-kasm-user-<username>.pass` | Password of a user created with `kasm_user` |
-| `access-data-<inventory file name>.csv` | One row per node; first column `kasm_url`, sorted by the full Kasm URL: IP, inventory name, student username/password and Kasm admin/normal-user credentials |
+| `.credentials/[<project>-]<host>-<student_name>.pass` | Password of the Linux user |
+| `.credentials/[<project>-]<host>-kasm-admin.pass` | Password of `admin@kasm.local` |
+| `.credentials/[<project>-]<host>-kasm-user.pass` | Password of the built-in `user@kasm.local` |
+| `.credentials/[<project>-]<host>-kasm-user-<username>.pass` | Password of a user created with `kasm_user` |
+| `access-data-<project|inventory>.csv` | One row per node; first column `kasm_url`, sorted by the full Kasm URL: IP, student username/password and Kasm admin/normal-user credentials |
 | `kasm-api-key-<inventory_hostname>.json` | Copy of the persistent API key (created with the first workspace) |
 
 Passwords are generated **once** and reused on later runs. To get new ones, delete `.credentials/` before running the

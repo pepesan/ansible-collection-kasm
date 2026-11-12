@@ -1,25 +1,25 @@
 # Examples: install and manage Kasm
 
 Run every command from this directory. The wrappers set `ansible.cfg` from
-their own location, accept the inventory path explicitly, and keep generated
-credentials outside the checkout.
+their own location, take the default inventory configured in `ansible.cfg`
+(`./inventory`) when omitted, and keep generated credentials outside the checkout.
 
 ## Script reference
 
 | Script | Purpose and arguments |
 |---|---|
 | `00_install_dependencies.sh` | Install this checkout, its collection dependencies, and pinned third-party roles. No arguments. |
-| `01_preflight_inventory.sh [inventory]` | Validate inventory structure only; no SSH connection. Defaults to `./inventory`. |
-| `02_install_custom_domain.sh <inventory> <base_domain> <email>` | Install for a real domain after the DNS preflight passes. |
-| `03_install_default_domain.sh <inventory>` | Install with placeholder `example.com`; demonstration only, not for a public deployment. |
-| `04_preflight_dns_tls.sh <inventory> <base_domain>` | Check public DNS and trusted HTTPS for an already-running Kasm endpoint. |
-| `05_install_no_tls.sh <inventory>` | Install without Let's Encrypt; intended for local or DNS-less testing. |
-| `06_workspace_create.sh <inventory> [image] [name]` | Register a workspace; defaults to `pepesan/mi-ubuntu-resolute-kasm:1.0`. |
-| `07_workspace_create_custom_image.sh <inventory> <image> <name>` | Register the specified image; references containing `dind` are made privileged. |
-| `08_workspace_delete.sh <inventory> <image> [keep_profiles]` | Delete a workspace; persistent profiles are deleted unless `keep_profiles` is supplied. |
-| `09_kasm_session.sh <inventory> <present\|absent> <username> <image> [recover_on_boot]` | Start or destroy a session; boot recovery is enabled by default and can be disabled with `false`. |
-| `10_kasm_user.sh <inventory> <present\|absent> <username>` | Create or delete a Kasm user. |
-| `11_kasm_uninstall.sh <inventory>` | **Destructive:** remove the Kasm installation and its data from the target host. |
+| `01_preflight_inventory.sh [inventory]` | Validate inventory structure only; no SSH connection. Defaults to `ansible.cfg` (`./inventory`). |
+| `02_install_custom_domain.sh [inventory] <base_domain> <email>` | Install for a real domain after the DNS preflight passes. Defaults to `ansible.cfg` (`./inventory`). |
+| `03_install_default_domain.sh [inventory]` | Install with placeholder `example.com`; demonstration only, not for a public deployment. Defaults to `ansible.cfg` (`./inventory`). |
+| `04_preflight_dns_tls.sh [inventory] <base_domain>` | Check public DNS and trusted HTTPS for an already-running Kasm endpoint. Defaults to `ansible.cfg` (`./inventory`). |
+| `05_install_no_tls.sh [inventory]` | Install without Let's Encrypt; intended for local or DNS-less testing. Defaults to `ansible.cfg` (`./inventory`). |
+| `06_workspace_create.sh [inventory] [image] [name]` | Register a workspace; defaults to `pepesan/mi-ubuntu-resolute-kasm:1.0`. Defaults to `ansible.cfg` (`./inventory`). |
+| `07_workspace_create_custom_image.sh [inventory] <image> <name>` | Register the specified image; references containing `dind` are made privileged. Defaults to `ansible.cfg` (`./inventory`). |
+| `08_workspace_delete.sh [inventory] <image> [keep_profiles]` | Delete a workspace; persistent profiles are deleted unless `keep_profiles` is supplied. Defaults to `ansible.cfg` (`./inventory`). |
+| `09_kasm_session.sh [inventory] <present\|absent> <username> <image> [recover_on_boot]` | Start or destroy a session; boot recovery is enabled by default. Defaults to `ansible.cfg` (`./inventory`). |
+| `10_kasm_user.sh [inventory] <present\|absent> <username>` | Create or delete a Kasm user. Defaults to `ansible.cfg` (`./inventory`). |
+| `11_kasm_uninstall.sh [inventory]` | **Destructive:** remove the Kasm installation and its data from the target host. Defaults to `ansible.cfg` (`./inventory`). |
 
 ## Recommended first deployment
 
@@ -322,13 +322,13 @@ LOG_DIR="${KASM_DATA_DIR:-$HOME/pepesan-kasm-data}/logs"
 tail -f "$LOG_DIR/workspace-deploy.log"
 ```
 
-For locating the CSV Credentials file you can find it at:
+For locating the CSV Credentials file you can find it under `$KASM_DATA_DIR/csv/` named after `kasm_training_project` (or the inventory name):
 ```bash
-ls -ls $KASM_DATA_DIR/csv/access-data-inventory.csv
+ls -ls $KASM_DATA_DIR/csv/access-data-${kasm_training_project:-inventory}.csv
 ```
-By default:
+For example with `kasm_training_project=client-01`:
 ```bash
-ls -ls $HOME/pepesan-kasm-data/csv/access-data-inventory.csv
+ls -ls $HOME/pepesan-kasm-data/csv/access-data-client-01.csv
 ```
 
 

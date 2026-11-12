@@ -8,11 +8,10 @@ del inventario (`access-data-<inventario>.csv`), una fila por nodo. Lo usa
 [`kasm`](../kasm/README.es.md) y lee el mismo fichero de contraseña `student`
 que genera [`student`](../student/README.es.md).
 
-Las columnas, en este orden, son `kasm_url`, `ip`, `student_user`, `nombre`,
+Las columnas, en este orden, son `kasm_url`, `ip`, `student_user`,
 `student_password`, `kasm_admin_user`, `kasm_admin_password`,
 `kasm_normal_user`, `kasm_normal_user_password`. Las filas se ordenan en orden
-ascendente por la URL completa de Kasm. `ip` procede de `ansible_host` y
-`nombre` es el alias del inventario.
+ascendente por la URL completa de Kasm. `ip` procede de `ansible_host`.
 El directorio del CSV se crea con permisos `0700` y cada fichero CSV tiene
 permisos `0600`; otros usuarios locales no pueden leer las credenciales.
 
@@ -25,10 +24,10 @@ Todo está en la máquina que ejecuta Ansible (nunca en el repositorio):
 
 | Contraseña | Dónde | Fijar una concreta con |
 |---|---|---|
-| Usuario Linux `student` | CSV (`student_user`, `student_password`) y `.credentials/<host>-<student_name>.pass` | `-e student_password_plain=...` |
-| Kasm `admin@kasm.local` | CSV (`kasm_admin_user`, `kasm_admin_password`) y `.credentials/<host>-kasm-admin.pass` | `-e kasm_admin_password=...` |
-| Kasm integrado `user@kasm.local` | CSV (`kasm_normal_user`, `kasm_normal_user_password`) y `.credentials/<host>-kasm-user.pass` | `-e kasm_default_user_password=...` |
-| Usuarios de Kasm creados con [`kasm_user`](../kasm_user/README.es.md) | solo `.credentials/<host>-kasm-user-<usuario>.pass` (el CSV tiene una fila por host) | `-e kasm_user_password=...` |
+| Usuario Linux `student` | CSV (`student_user`, `student_password`) y `.credentials/[<proyecto>-]<host>-<student_name>.pass` | `-e student_password_plain=...` |
+| Kasm `admin@kasm.local` | CSV (`kasm_admin_user`, `kasm_admin_password`) y `.credentials/[<proyecto>-]<host>-kasm-admin.pass` | `-e kasm_admin_password=...` |
+| Kasm integrado `user@kasm.local` | CSV (`kasm_normal_user`, `kasm_normal_user_password`) y `.credentials/[<proyecto>-]<host>-kasm-user.pass` | `-e kasm_default_user_password=...` |
+| Usuarios de Kasm creados con [`kasm_user`](../kasm_user/README.es.md) | solo `.credentials/[<proyecto>-]<host>-kasm-user-<usuario>.pass` (el CSV tiene una fila por host) | `-e kasm_user_password=...` |
 
 Cualquiera se puede pasar como parámetro; si no, se genera una aleatoria una sola vez y se reutiliza en ejecuciones
 posteriores. El CSV recoge el valor realmente en uso, también cuando es fijo.
@@ -42,8 +41,8 @@ posteriores. El CSV recoge el valor realmente en uso, también cuando es fijo.
 | `kasm_credentials_admin_user` / `_user_user` | `admin@kasm.local` / `user@kasm.local` | Usuarios registrados en el CSV |
 | `kasm_credentials_student_name` | `{{ student_name | default("student") }}` | Nombre del usuario Linux creado por [`student`](../student/README.es.md); sigue a `student_name` automáticamente para leer el fichero de contraseña correcto |
 | `kasm_credentials_csv_prefix` | `access-data` | Prefijo del nombre del CSV (letras, dígitos, `.`, `_`, `-`). El `.gitignore` del repositorio solo cubre `access-data-*` (y el antiguo `datos-acceso-*`): añada su patrón si lo cambia |
-| `kasm_credentials_csv_name` | `access-data-<nombre del fichero de inventario>.csv` | Nombre exacto del CSV, derivado del fichero de inventario de la ejecución (`inventory_file`). Sin fecha: todas las ejecuciones del mismo inventario caen en el mismo fichero y el nombre indica qué hosts contiene. Poner `""` para usar la fecha del día de ejecución (abajo). Debe ser un nombre `*.csv` simple; el script rechaza rutas |
-| `kasm_training_project` | `""` | Solo cuando `kasm_credentials_csv_name` es `""`: prefijo de curso opcional en `access-data[-<proyecto>]-<fecha de ejecución>.csv`; un fichero nuevo cada día |
+| `kasm_credentials_csv_name` | `access-data-<proyecto|inventario>.csv` | Nombre exacto del CSV, derivado de `kasm_training_project` (o del inventario). Poner `""` para usar la fecha del día de ejecución. Debe ser un nombre `*.csv` simple |
+| `kasm_training_project` | `""` | Prefijo de curso/proyecto para contraseñas generadas y CSV (`access-data-<proyecto>.csv`) |
 | `kasm_credentials_csv_dir` | `<directorio actual>` | Dónde se escribe el CSV (el directorio desde el que se ejecuta `ansible-playbook`, no la carpeta del playbook) |
 
 Requiere que quien llame al rol fije `kasm_domain` (normalmente lo aporta

@@ -1,19 +1,28 @@
 #!/usr/bin/env bash
 # Create or delete one Kasm application user. Generated password stays outside
 # the checkout in KASM_DATA_DIR/.credentials/.
-
-set -euo pipefail
+#
+# Usage: ./10_kasm_user.sh [inventory] <present|absent> <username>
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-if (($# != 3)); then
-  printf 'Usage: %s <inventory> <present|absent> <username>\n' "$0" >&2
+if [[ "${1:-}" == "present" || "${1:-}" == "absent" ]]; then
+  INVENTORY=""
+  STATE="$1"
+  USERNAME="${2:-}"
+  if (($# != 2)); then
+    printf 'Usage: %s [inventory] <present|absent> <username>\n' "$0" >&2
+    exit 2
+  fi
+elif (($# == 3)); then
+  INVENTORY="$1"
+  STATE="$2"
+  USERNAME="$3"
+else
+  printf 'Usage: %s [inventory] <present|absent> <username>\n' "$0" >&2
   exit 2
 fi
-INVENTORY="$1"
-STATE="$2"
-USERNAME="$3"
 if [[ "${STATE}" != present && "${STATE}" != absent ]]; then
   printf 'State must be present or absent.\n' >&2
   exit 2

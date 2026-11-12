@@ -3,20 +3,24 @@
 # reference, and workspace name. Images containing "dind" are automatically
 # configured as privileged for their inner Docker daemon.
 #
-# Example: ./07_workspace_create_custom_image.sh ./inventory \
-#   pepesan/mi-ubuntu-resolute-kasm-ansible-dind:1.2 example-dind
+# Usage: ./07_workspace_create_custom_image.sh [inventory] <image> <workspace_name>
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
-if (($# != 3)); then
-  printf 'Usage: %s <inventory> <image> <workspace_name>\n' "$0" >&2
+if (($# == 2)); then
+  INVENTORY=""
+  IMAGE="$1"
+  NAME="$2"
+elif (($# == 3)); then
+  INVENTORY="$1"
+  IMAGE="$2"
+  NAME="$3"
+else
+  printf 'Usage: %s [inventory] <image> <workspace_name>\n' "$0" >&2
   exit 2
 fi
-INVENTORY="$1"
-IMAGE="$2"
-NAME="$3"
 PRIVILEGED=false
 [[ "${IMAGE,,}" == *dind* ]] && PRIVILEGED=true
 NAME_JSON="$(jq -cn --arg name "${NAME}" '{kasm_workspace_name: $name}')"
