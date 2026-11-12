@@ -28,11 +28,10 @@ LEGACY_COLUMNS = [
 ]
 
 
-def row(url, ip, name):
+def row(url, ip):
     return {
         "kasm_url": url,
         "ip": ip,
-        "nombre": name,
         "student_user": "student",
         "student_password": "student-pass",
         "kasm_admin_user": "admin@kasm.local",
@@ -56,10 +55,10 @@ class CredentialsCsvTests(unittest.TestCase):
             return reader.fieldnames, list(reader)
 
     def test_schema_starts_with_url_and_rows_are_sorted_by_url(self):
-        node10 = row("https://node10.example.test", "192.0.2.10", "node10")
-        node2 = row("https://node2.example.test", "192.0.2.2", "node2")
-        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), node10["ip"], node10["nombre"], node10))
-        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), node2["ip"], node2["nombre"], node2))
+        node10 = row("https://node10.example.test", "192.0.2.10")
+        node2 = row("https://node2.example.test", "192.0.2.2")
+        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), node10["ip"], "node10", node10))
+        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), node2["ip"], "node2", node2))
 
         columns, rows = self.read_rows()
         self.assertEqual(
@@ -68,7 +67,6 @@ class CredentialsCsvTests(unittest.TestCase):
                 "kasm_url",
                 "ip",
                 "student_user",
-                "nombre",
                 "student_password",
                 "kasm_admin_user",
                 "kasm_admin_password",
@@ -120,7 +118,7 @@ class CredentialsCsvTests(unittest.TestCase):
         self.assertEqual(columns, CSV_HELPER.COLUMNS)
         self.assertEqual(
             rows,
-            [row("https://node20.example.test", "192.0.2.20", "node20")],
+            [row("https://node20.example.test", "192.0.2.20")],
         )
         self.assertEqual(self.csv_path.stat().st_mode & 0o777, 0o600)
 
@@ -160,35 +158,32 @@ class CredentialsCsvTests(unittest.TestCase):
             writer.writeheader()
             writer.writerows(legacy_rows)
 
-        current = row("https://node2.example.test", "192.0.2.2", "node2")
-        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), current["ip"], current["nombre"], current))
+        current = row("https://node2.example.test", "192.0.2.2")
+        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), current["ip"], "node2", current))
 
         columns, rows = self.read_rows()
         self.assertEqual(columns, CSV_HELPER.COLUMNS)
         self.assertEqual(len(rows), 2)
-        node2 = next(item for item in rows if item["nombre"] == "node2")
+        node2 = next(item for item in rows if item["kasm_url"].endswith("node2.example.test"))
         node10 = next(item for item in rows if item["kasm_url"].endswith("node10.example.test"))
         self.assertEqual(node2, current)
         self.assertEqual(node10["kasm_normal_user"], "legacy-user@kasm.local")
         self.assertEqual(node10["kasm_normal_user_password"], "legacy-normal")
 
     def test_upsert_matches_either_identity_and_is_idempotent(self):
-        first = row("https://node2.example.test", "192.0.2.2", "node2")
-        CSV_HELPER.update_row(str(self.csv_path), first["ip"], first["nombre"], first)
+        first = row("https://node2.example.test", "192.0.2.2")
+        CSV_HELPER.update_row(str(self.csv_path), first["ip"], "node2", first)
 
-        changed_ip = row("https://node2.example.test", "192.0.2.22", "node2")
-        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), changed_ip["ip"], changed_ip["nombre"], changed_ip))
+        changed_ip = row("https://node2.example.test", "192.0.2.22")
+        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), changed_ip["ip"], "node2", changed_ip))
         columns, rows = self.read_rows()
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["ip"], "192.0.2.22")
 
-        renamed = row("https://node2.example.test", "192.0.2.22", "node-renamed")
-        self.assertTrue(CSV_HELPER.update_row(str(self.csv_path), renamed["ip"], renamed["nombre"], renamed))
-        self.assertFalse(CSV_HELPER.update_row(str(self.csv_path), renamed["ip"], renamed["nombre"], renamed))
+        self.assertFalse(CSV_HELPER.update_row(str(self.csv_path), changed_ip["ip"], "node2", changed_ip))
         _, rows = self.read_rows()
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["nombre"], "node-renamed")
-
+        self.assertEqual(rows[0]["ip"], "192.0.2.22")
 
 if __name__ == "__main__":
     unittest.main()

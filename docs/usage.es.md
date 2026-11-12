@@ -122,11 +122,11 @@ repositorio.
 
 | Fichero | Qué contiene |
 |---|---|
-| `.credentials/<host>-<student_name>.pass` | Contraseña del usuario Linux |
-| `.credentials/<host>-kasm-admin.pass` | Contraseña de `admin@kasm.local` |
-| `.credentials/<host>-kasm-user.pass` | Contraseña del `user@kasm.local` integrado |
-| `.credentials/<host>-kasm-user-<usuario>.pass` | Contraseña de un usuario creado con `kasm_user` |
-| `access-data-<nombre del fichero de inventario>.csv` | Una fila por nodo; columnas `kasm_url`, `ip`, `student_user`, `nombre`, `student_password` y credenciales admin/usuario normal de Kasm; filas ordenadas por la URL completa |
+| `.credentials/[<proyecto>-]<host>-<student_name>.pass` | Contraseña del usuario Linux |
+| `.credentials/[<proyecto>-]<host>-kasm-admin.pass` | Contraseña de `admin@kasm.local` |
+| `.credentials/[<proyecto>-]<host>-kasm-user.pass` | Contraseña del `user@kasm.local` integrado |
+| `.credentials/[<proyecto>-]<host>-kasm-user-<usuario>.pass` | Contraseña de un usuario creado con `kasm_user` |
+| `access-data-<proyecto|inventario>.csv` | Una fila por nodo; columnas `kasm_url`, `ip`, `student_user`, `student_password` y credenciales admin/usuario normal de Kasm; filas ordenadas por la URL completa |
 | `kasm-api-key-<inventory_hostname>.json` | Copia de la clave de API persistente (se crea con el primer workspace) |
 
 Las contraseñas se generan **una sola vez** y se reutilizan en las ejecuciones siguientes. Para obtener otras nuevas, borre

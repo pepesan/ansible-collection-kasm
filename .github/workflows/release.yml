@@ -21,7 +21,7 @@ env:
 jobs:
   validate:
     name: Validate (lint and version)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -51,7 +51,7 @@ jobs:
   build-check:
     name: Build and documentation checks
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -67,7 +67,7 @@ jobs:
   molecule:
     name: Molecule (${{ matrix.role }})
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -89,7 +89,7 @@ jobs:
   publish:
     name: Publish to Ansible Galaxy and GitHub Release
     needs: [build-check, molecule]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
