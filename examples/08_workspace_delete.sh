@@ -2,21 +2,35 @@
 # Delete one workspace. Persistent profile data is deleted by default; pass
 # keep_profiles to preserve it.
 #
-# Usage: ./08_workspace_delete.sh <inventory> <image> [keep_profiles]
-
+# Usage: ./08_workspace_delete.sh [inventory] <image> [keep_profiles]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
-if (($# < 2 || $# > 3)); then
-  printf 'Usage: %s <inventory> <image> [keep_profiles]\n' "$0" >&2
+if (($# == 1)); then
+  INVENTORY=""
+  IMAGE="$1"
+  KEEP_PROFILES=""
+elif (($# == 2)); then
+  if [[ "$2" == "keep_profiles" ]]; then
+    INVENTORY=""
+    IMAGE="$1"
+    KEEP_PROFILES="$2"
+  else
+    INVENTORY="$1"
+    IMAGE="$2"
+    KEEP_PROFILES=""
+  fi
+elif (($# == 3)); then
+  INVENTORY="$1"
+  IMAGE="$2"
+  KEEP_PROFILES="$3"
+else
+  printf 'Usage: %s [inventory] <image> [keep_profiles]\n' "$0" >&2
   exit 2
 fi
-INVENTORY="$1"
-IMAGE="$2"
-KEEP_PROFILES="${3:-}"
 if [[ -n "${KEEP_PROFILES}" && "${KEEP_PROFILES}" != keep_profiles ]]; then
-  printf 'The optional third argument must be keep_profiles.\n' >&2
+  printf 'The optional argument must be keep_profiles.\n' >&2
   exit 2
 fi
 DELETE_PERSISTENT_DATA=true

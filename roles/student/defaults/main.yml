@@ -13,6 +13,13 @@ student_credentials_dir: "{{ lookup('ansible.builtin.env', 'PWD') | default(play
 # Random per-host password, generated once and re-read on later runs (the
 # "password" lookup persists it to a file under student_credentials_dir).
 # Override with -e student_password_plain=...
+student_training_project: "{{ kasm_training_project | default('') }}"
+student_project_slug: >-
+  {{ (((student_training_project | lower
+     | regex_replace('[^A-Za-z0-9._-]+', '-')
+     | regex_replace('^-+|-+$', '')) ~ '-')
+     if (student_training_project | default('', true) | trim) else '') }}
+student_pass_prefix: "{{ student_credentials_dir }}/{{ student_project_slug }}{{ inventory_hostname }}-{{ student_name }}"
+
 student_password_plain: >-
-  {{ lookup('password', student_credentials_dir ~ '/' ~ inventory_hostname ~ '-' ~ student_name
-     ~ '.pass length=20 chars=ascii_letters,digits') }}
+  {{ lookup('password', student_pass_prefix ~ '.pass length=20 chars=ascii_letters,digits') }}

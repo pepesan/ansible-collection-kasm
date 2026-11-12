@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 kasm_examples_init() {
-  local inventory_input="${1:?Inventory path is required}"
+  local inventory_input="${1:-}"
   local caller_dir="$PWD"
   local examples_dir
   local inventory_link_name
@@ -9,7 +9,7 @@ kasm_examples_init() {
 
   examples_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
   repo_root="$(realpath -e -- "${examples_dir}/..")"
-  export ANSIBLE_CONFIG="${examples_dir}/ansible.cfg"
+  export ANSIBLE_CONFIG="${ANSIBLE_CONFIG:-${examples_dir}/ansible.cfg}"
 
   KASM_DATA_DIR="${KASM_DATA_DIR:-${HOME}/pepesan-kasm-data}"
   if [[ "${KASM_DATA_DIR}" != /* ]]; then
@@ -27,19 +27,58 @@ kasm_examples_init() {
   install -d -m 700 -- "${KASM_DATA_DIR}" "${KASM_CREDENTIALS_DIR}" "${KASM_CSV_DIR}"
   export KASM_DATA_DIR KASM_CREDENTIALS_DIR KASM_CSV_DIR
 
+  if [[ -z "${inventory_input}" ]]; then
+    if [[ -n "${KASM_INVENTORY:-}" ]]; then
+      inventory_input="${KASM_INVENTORY}"
+    elif [[ -f "${ANSIBLE_CONFIG}" ]]; then
+      local cfg_inv
+      cfg_inv="$(sed -n -E 's/^[[:space:]]*inventory[[:space:]]*=[[:space:]]*(.*)/\1/p' "${ANSIBLE_CONFIG}" | head -n 1 | tr -d '\r' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+      if [[ -n "${cfg_inv}" ]]; then
+        local cfg_dir
+        cfg_dir="$(cd -- "$(dirname -- "${ANSIBLE_CONFIG}")" && pwd)"
+        if [[ "${cfg_inv}" != /* ]]; then
+          inventory_input="${cfg_dir}/${cfg_inv}"
+        else
+          inventory_input="${cfg_inv}"
+        fi
+      else
+        inventory_input="${examples_dir}/inventory"
+      fi
+    else
+      inventory_input="${examples_dir}/inventory"
+    fi
+  fi
+
   if [[ "${inventory_input}" != /* ]]; then
     inventory_input="${caller_dir}/${inventory_input}"
   fi
+  inventory_input="$(realpath -m -- "${inventory_input}")"
   if [[ ! -e "${inventory_input}" ]]; then
     printf 'Inventory does not exist: %s\n' "${inventory_input}" >&2
+    printf 'Configure an inventory or copy %s/inventory.example to %s/inventory\n' "${examples_dir}" "${examples_dir}" >&2
     return 2
   fi
   KASM_SOURCE_INVENTORY="$(realpath -e -- "${inventory_input}")"
+
+  local training_project=""
+  if [[ -f "${KASM_SOURCE_INVENTORY}" ]]; then
+    training_project="$(ansible-inventory -i "${KASM_SOURCE_INVENTORY}" --list 2>/dev/null | jq -r '[._meta.hostvars[].kasm_training_project // empty, .all.vars.kasm_training_project // empty, .kasm.vars.kasm_training_project // empty][0] // empty' || true)"
+  fi
+  local sanitized_training_project=""
+  if [[ -n "${training_project}" && "${training_project}" != "null" ]]; then
+    sanitized_training_project="$(jq -rn --arg name "${training_project}" '$name | gsub("[^A-Za-z0-9._-]+"; "-") | gsub("^-+|-+$"; "")' | tr '[:upper:]' '[:lower:]')"
+  fi
+
   local inventory_basename
   local sanitized_inventory_basename
   inventory_basename="${KASM_SOURCE_INVENTORY##*/}"
   sanitized_inventory_basename="$(jq -rn --arg name "${inventory_basename}" '$name | gsub("[^A-Za-z0-9._-]+"; "-") | gsub("^-+|-+$"; "")')"
-  KASM_CSV_NAME="access-data-${sanitized_inventory_basename:-inventory}.csv"
+
+  if [[ -n "${sanitized_training_project}" ]]; then
+    KASM_CSV_NAME="access-data-${sanitized_training_project}.csv"
+  else
+    KASM_CSV_NAME="access-data-${sanitized_inventory_basename:-inventory}.csv"
+  fi
   export KASM_CSV_NAME
 
   if [[ -f "${KASM_SOURCE_INVENTORY}" ]] && \
@@ -62,4 +101,13 @@ kasm_examples_init() {
   fi
 
   cd -- "${KASM_DATA_DIR}"
+}
+
+kasm_examples_print_credentials_summary() {
+  local csv_path="${KASM_CSV_DIR}/${KASM_CSV_NAME}"
+  printf '\n====================================================================\n'
+  printf 'Credenciales y datos de acceso / Access credentials:\n'
+  printf '  - Carpeta de credenciales por host: %s\n' "${KASM_CREDENTIALS_DIR}"
+  printf '  - Fichero CSV de accesos:           %s\n' "${csv_path}"
+  printf '====================================================================\n\n'
 }
