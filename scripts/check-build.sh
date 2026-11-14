@@ -49,13 +49,8 @@ if grep -iE '(^|/)(PLAN\.md|CLAUDE\.md|AGENTS\.md|\.ansible|\.cache|molecule|__p
   bad "development files or generated data inside the tarball (listed above)"
 fi
 mkdir "$W/x" && tar xzf "$TARBALL" -C "$W/x"
-# Any IPv4 that is not loopback or a documentation/example address would be a real one.
-allowed='^(127\.0\.0\.1|0\.0\.0\.0|203\.0\.113\.[0-9]+|192\.0\.2\.[0-9]+|198\.51\.100\.[0-9]+|10\.0\.0\.[0-9]+|1\.1\.1\.1|8\.8\.8\.8|9\.9\.9\.9)$'
-candidates="$(grep -rIhoE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' "$W/x" 2>/dev/null | grep -vE "$allowed" | sort -u)"
-if [ -n "$candidates" ]; then
-  echo "   addresses that are not documentation examples:"; echo "$candidates" | sed 's/^/     /'
-  bad "unexpected IPv4 addresses in the tarball (a real server address must never be published)"
-fi
+# Real IPs, keys, certificates, credentials, tokens and deny-listed strings (see check-secrets.sh).
+"$REPO/scripts/check-secrets.sh" --tree "$W/x" >/dev/null || bad "secrets in the tarball (listed above): nothing real may ever be published"
 
 echo "== clean virtual environment"
 python3 -m venv "$W/venv" && "$W/venv/bin/pip" install -q ansible-core >/dev/null 2>&1 || bad "could not create the virtual environment"
