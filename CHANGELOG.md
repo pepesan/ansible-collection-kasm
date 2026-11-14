@@ -5,9 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-11-14
 
 ### Added
+- `scripts/check-secrets.sh`: refuses real IP addresses, private keys, certificates, provider tokens, literal credentials, secret-bearing file names and locally deny-listed strings in staged changes, pushed commits, tracked files or a directory. `scripts/check-build.sh` now runs it on the built tarball.
 - Cluster mode (official manager + agents layout): playbooks `site_kasm_cluster` (preflight, manager, agents in
   `kasm_cluster_agents_serial` batches, images on the agents, workspaces/groups/users, CSV files) and
   `preflight_kasm_cluster` (public DNS A record, operating system, free ports 80/443, SSH/Python; fails before any role runs).
