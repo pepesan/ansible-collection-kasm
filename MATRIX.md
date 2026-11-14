@@ -18,6 +18,14 @@ This page summarizes the collection's documented platform targets and test cover
 The original seven-VM cycle and 2026-11-04 follow-ups covered all eight supported releases. Each passed no-TLS install and idempotence, user/workspace/session operations, privileged DinD with a real nested `docker run`, and uninstall/reinstall. No production server was altered.
 
 
+## Cluster mode (manager + agents)
+
+`site_kasm_cluster` and `preflight_kasm_cluster` (official layout, Ubuntu 24.04/26.04 and Debian 12/13 nodes) are new in
+0.2.0. Covered so far: `ansible-playbook --syntax-check`, `ansible-lint`/`yamllint`, the unit tests of the cluster/user CSV
+writers (`tests/test_cluster_csv.py`: columns, upsert, order, mode 600, atomic replace, byte-identical regeneration from
+`.credentials/`, secrets never on the command line) and a local run of the CSV tasks and of the preflight. No real-server
+end-to-end result of the cluster mode is recorded here yet.
+
 ## Automated checks
 
 CI and the release workflow run:

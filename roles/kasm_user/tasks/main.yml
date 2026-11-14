@@ -1,8 +1,6 @@
 ---
-# Unlike kasm_workspace/kasm_group, Kasm's public API fully covers
-# user management (create_user, get_users, delete_user), so this role is
-# pure ansible.builtin.uri — no direct Postgres access, no wrapped bash
-# script.
+# User CRUD uses Kasm's public API. Optional group membership uses the same
+# Postgres relation as kasm_group, because create_user does not grant groups.
 
 - name: Ensure kasm_user_username is set
   ansible.builtin.fail:
@@ -97,3 +95,45 @@
     - kasm_user_state == "absent"
     - kasm_user_existing is not none
   no_log: true
+
+- name: Resolve the user's requested group
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT group_id FROM groups WHERE name = convert_from(decode('{{ kasm_user_group_name | b64encode }}', 'base64'), 'UTF8');"
+  register: kasm_user_group_id
+  changed_when: false
+  failed_when: kasm_user_group_id.rc != 0 or kasm_user_group_id.stdout | trim == ""
+  when: kasm_user_state == "present" and kasm_user_group_name | length > 0
+
+- name: Check existing user membership
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT count(*) FROM user_groups ug JOIN users u ON u.user_id = ug.user_id
+    WHERE u.username = convert_from(decode('{{ kasm_user_username | b64encode }}', 'base64'), 'UTF8')
+    AND ug.group_id = '{{ kasm_user_group_id.stdout | trim }}';"
+  register: kasm_user_group_membership
+  changed_when: false
+  when: kasm_user_state == "present" and kasm_user_group_name | length > 0
+
+- name: Add user to the requested group
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -c
+    "INSERT INTO user_groups (user_id, group_id)
+    SELECT u.user_id, '{{ kasm_user_group_id.stdout | trim }}'
+    FROM users u WHERE u.username = convert_from(decode('{{ kasm_user_username | b64encode }}', 'base64'), 'UTF8');"
+  changed_when: true
+  when:
+    - kasm_user_state == "present"
+    - kasm_user_group_name | length > 0
+    - kasm_user_group_membership.stdout | trim == "0"
+
+- name: Verify requested user membership
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT count(*) FROM user_groups ug JOIN users u ON u.user_id = ug.user_id
+    WHERE u.username = convert_from(decode('{{ kasm_user_username | b64encode }}', 'base64'), 'UTF8')
+    AND ug.group_id = '{{ kasm_user_group_id.stdout | trim }}';"
+  register: kasm_user_group_verify
+  changed_when: false
+  failed_when: kasm_user_group_verify.rc != 0 or kasm_user_group_verify.stdout | trim != "1"
+  when: kasm_user_state == "present" and kasm_user_group_name | length > 0

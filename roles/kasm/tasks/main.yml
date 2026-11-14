@@ -125,14 +125,14 @@
 # Image pruning mode is server-wide (not per group), so it stays here.
 - name: Read current image-pruning mode
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
     "SELECT prune_images_mode FROM servers LIMIT 1;"
   register: kasm_prune_mode_current
   changed_when: false
 
 - name: Disable aggressive image pruning (keeps custom images available)
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -c
     "UPDATE servers SET prune_images_mode = 'No Prune';"
   when: kasm_prune_mode_current.stdout | trim != "No Prune"
   changed_when: true

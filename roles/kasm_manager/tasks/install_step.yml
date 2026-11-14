@@ -1,0 +1,40 @@
+---
+# One install.sh run (kasm_manager_step: db or app) through the kasm role's
+# parametrized script. No no_log on purpose: the installer output is already
+# redacted by the script and a real install.sh error must reach the user; the
+# secrets live in task vars and the environment, never in the loop item.
+- name: "Run install.sh for role {{ kasm_manager_step }}"
+  ansible.builtin.script: "{{ role_path }}/../kasm/files/fix_and_install_kasm.sh"
+  environment:
+    KASM_ADMIN_PASSWORD: "{{ kasm_admin_password }}"
+    KASM_USER_PASSWORD: "{{ kasm_default_user_password }}"
+    KASM_RELEASE_DIR: "{{ kasm_manager_release_dir }}"
+    KASM_DOCKER: docker
+    KASM_INSTALL_ARGS: "{{ kasm_manager_steps[kasm_manager_step].args }}"
+    KASM_REQUIRED_SERVICES: "{{ kasm_manager_steps[kasm_manager_step].services }}"
+    KASM_INSTALL_MARKER: "{{ kasm_manager_steps[kasm_manager_step].marker }}"
+    KASM_LOG_FILE: "{{ kasm_manager_log_dir }}/kasm-manager-{{ kasm_manager_step }}-install.log"
+    KASM_PASSWORDS_IN_ARGS: "{{ kasm_manager_steps[kasm_manager_step].passwords }}"
+    KASM_INSTALL_PATCHES: "{{ kasm_manager_installer_patches | join('\n') }}"
+    KASM_RESTART_SYSTEMD_SERVICE: "{{ 'kasm.service' if kasm_manager_step == 'app' else '' }}"
+    KASM_PRESERVE_DB_DIR: "{{ (kasm_dir ~ '/' ~ kasm_version) if kasm_manager_step == 'app' else '' }}"
+  vars:
+    kasm_manager_steps:
+      db:
+        args: >-
+          {{ kasm_manager_flag.role }} db {{ kasm_manager_flag.eula }}
+          {{ kasm_manager_flag.db_password }} {{ kasm_manager_db_password }}
+          {{ kasm_manager_flag.manager_token }} {{ kasm_manager_token }}
+          {{ kasm_manager_db_extra_args }}
+        services: "{{ kasm_manager_db_services }}"
+        marker: "{{ kasm_manager_db_marker }}"
+        passwords: "true"
+      app:
+        args: >-
+          {{ kasm_manager_flag.role }} app {{ kasm_manager_flag.eula }}
+          {{ kasm_manager_flag.db_hostname }} {{ kasm_manager_db_hostname }}
+          {{ kasm_manager_flag.db_password }} {{ kasm_manager_db_password }}
+          {{ kasm_manager_app_extra_args }}
+        services: "{{ kasm_manager_app_services }}"
+        marker: "{{ kasm_manager_app_marker }}"
+        passwords: "false"

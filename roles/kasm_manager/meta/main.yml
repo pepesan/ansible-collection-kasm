@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: kasm_manager
+  description: Installs a Kasm Workspaces manager (database and web app roles, no local agent) straight on the host
+  author: pepesan
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+
+# Docker is installed by tasks/main.yml (pepesan.kasm.docker) and swap and
+# certbot by geerlingguy.swap / geerlingguy.certbot, as in the kasm role:
+# a collection cannot declare role dependencies.
+dependencies: []

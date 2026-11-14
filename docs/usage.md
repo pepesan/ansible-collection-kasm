@@ -245,3 +245,8 @@ tail -f /opt/kasm/data/opt/kasm_deploy.log
 | `kasm_credentials` fails with an inline inventory (`-i 10.0.0.1,`) | Fixed in this collection: the CSV name is derived from the inventory and sanitized. |
 | The session is paused after an hour | Group policy. Raise `kasm_group_keepalive_seconds`. |
 | `ps -u student` on the host shows Kasm's Python processes | Kasm's service containers run as UID 1001, the same number as the `student` user. They are not `student`'s processes. Do not `pkill -u student`: you would kill Kasm's API. |
+
+## Cluster deployment
+
+For the official manager + agent topology (inventory groups, variables, the `site_kasm_cluster` workflow and the
+cluster/user CSV files) see the [cluster guide](cluster.md).

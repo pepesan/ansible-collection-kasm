@@ -1,0 +1,118 @@
+---
+- name: Resolve manager address from the agent host
+  ansible.builtin.command:
+    argv:
+      - getent
+      - ahostsv4
+      - "{{ kasm_manager_hostname }}"
+  register: kasm_agent_manager_resolution
+  changed_when: false
+  failed_when: >-
+    kasm_agent_manager_resolution.rc != 0 or
+    (kasm_agent_manager_resolution.stdout_lines | length == 0)
+
+- name: Set manager IPv4 address
+  ansible.builtin.set_fact:
+    kasm_agent_manager_ip: >-
+      {{ kasm_agent_manager_resolution.stdout_lines[0].split()[0] }}
+
+- name: Detect UFW firewall
+  ansible.builtin.command: command -v ufw
+  args:
+    executable: /bin/sh
+  register: kasm_agent_ufw
+  changed_when: false
+  failed_when: false
+
+- name: Detect firewalld
+  ansible.builtin.command: command -v firewall-cmd
+  args:
+    executable: /bin/sh
+  register: kasm_agent_firewalld
+  changed_when: false
+  failed_when: false
+
+- name: Detect iptables
+  ansible.builtin.command: command -v iptables
+  args:
+    executable: /bin/sh
+  register: kasm_agent_iptables
+  changed_when: false
+  failed_when: false
+
+- name: Allow HTTPS from manager in UFW
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+    from_ip: "{{ kasm_agent_manager_ip }}"
+    insert: 1
+    state: enabled
+  when: kasm_agent_ufw.rc == 0
+
+- name: Deny other HTTPS sources in UFW
+  community.general.ufw:
+    rule: deny
+    port: "443"
+    proto: tcp
+    insert: 2
+    state: enabled
+  when: kasm_agent_ufw.rc == 0
+
+- name: Add HTTPS source rule to firewalld
+  ansible.posix.firewalld:
+    rich_rule: >-
+      rule family="ipv4" source address="{{ kasm_agent_manager_ip }}"
+      port port="443" protocol="tcp" accept
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - kasm_agent_ufw.rc != 0
+    - kasm_agent_firewalld.rc == 0
+- name: Deny HTTPS from other IPv4 sources in firewalld
+  ansible.posix.firewalld:
+    rich_rule: >-
+      rule family="ipv4" source NOT address="{{ kasm_agent_manager_ip }}"
+      port port="443" protocol="tcp" drop
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - kasm_agent_ufw.rc != 0
+    - kasm_agent_firewalld.rc == 0
+
+- name: Add iptables HTTPS source rule
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "443"
+    source: "{{ kasm_agent_manager_ip }}"
+    jump: ACCEPT
+    action: insert
+    rule_num: "1"
+  when:
+    - kasm_agent_ufw.rc != 0
+    - kasm_agent_firewalld.rc != 0
+    - kasm_agent_iptables.rc == 0
+
+- name: Add iptables HTTPS deny rule for other sources
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "443"
+    jump: DROP
+  when:
+    - kasm_agent_ufw.rc != 0
+    - kasm_agent_firewalld.rc != 0
+    - kasm_agent_iptables.rc == 0
+
+- name: Report missing firewall tool
+  ansible.builtin.debug:
+    msg: >-
+      kasm_agent_restrict_443_to_manager is enabled, but no supported firewall
+      tool (ufw, firewalld, iptables) is installed; no restriction was applied.
+  when:
+    - kasm_agent_ufw.rc != 0
+    - kasm_agent_firewalld.rc != 0
+    - kasm_agent_iptables.rc != 0

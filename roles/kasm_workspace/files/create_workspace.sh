@@ -80,7 +80,9 @@ done
 echo ">> Kasm is ready. Proceeding..."
 
 PSQL() {
-  docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm "$@"
+  # Unquoted on purpose: KASM_DB_EXEC is a multi-word command prefix.
+  # shellcheck disable=SC2086
+  ${KASM_DB_EXEC:-docker exec kasm docker exec kasm_db} psql -U kasmapp -d kasm "$@"
 }
 
 # Staging (create_staging_config/update_staging_config) DOES have a
@@ -215,22 +217,21 @@ API_KEY_NAME="ansible-managed-kasm-api"
     HASH=$(echo -n "${NEW_API_KEY_SECRET}${SALT}" | sha256sum | cut -d' ' -f1)
 
     echo ">> Removing any leftovers of a previous API key with the same name, if any..."
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c \
-      "DELETE FROM api_configs WHERE name='${API_KEY_NAME}';"
+    PSQL -c "DELETE FROM api_configs WHERE name='${API_KEY_NAME}';"
 
     echo ">> Inserting the API key into the database..."
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c "
+    PSQL -c "
       INSERT INTO api_configs (name, api_key, api_key_secret_hash, salt, enabled, read_only, created)
       VALUES ('${API_KEY_NAME}', '${NEW_API_KEY}', '${HASH}', '${SALT}', true, false, now());
     "
-    API_ID=$(docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c \
+    API_ID=$(PSQL -t -c \
       "SELECT api_id FROM api_configs WHERE name='${API_KEY_NAME}';" | tr -d ' ')
     # Permission 200 ("Administrators", create_image/get_images) to create
     # workspaces, and permission 100 ("All Users",
     # request_kasm/get_kasm_status/destroy_kasm) so this same key can also
     # validate that a real session comes up after creating the workspace.
     # Both are group-level permissions.
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c "
+    PSQL -c "
       INSERT INTO group_permissions (permission_id, api_id) VALUES (200, '${API_ID}');
       INSERT INTO group_permissions (permission_id, api_id) VALUES (100, '${API_ID}');
     "

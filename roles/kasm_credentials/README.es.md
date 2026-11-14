@@ -101,3 +101,33 @@ head -1 access-data-*.csv                 # las columnas
 cut -d, -f1-3 access-data-*.csv           # URL de Kasm, IP y nombre del inventario
 ls -l .credentials/                       # un fichero por contraseña, modo 600
 ```
+
+## CSV de acceso del clúster
+
+El modo clúster (`pepesan.kasm.site_kasm_cluster`) escribe dos ficheros más con `tasks_from: cluster_csv.yml` y
+`tasks_from: user_csv.yml`, junto a `access-data-*.csv`, en `kasm_credentials_csv_dir` (modo 600, con el nombre de
+`kasm_training_project`). Están separados porque el CSV existente mezcla la contraseña de admin con la del alumno:
+
+| Fichero | Para | Filas | Columnas |
+|---|---|---|---|
+| `cluster-access-<proyecto>.csv` | el operador; **no se reparte** | una por nodo (grupo `kasm_cluster`) | `role`, `node`, `fqdn`, `ip`, `ssh_user`, `ssh_password`, `kasm_url`, `kasm_admin_user`, `kasm_admin_password`, `kasm_manager_token`, `kasm_version` |
+| `user-access-<proyecto>.csv` | alumnos | una por usuario de Kasm | `kasm_url`, `kasm_user`, `kasm_user_password`, `kasm_group`, `workspaces` (separados por `;`) |
+
+- `role` es `manager` o `agent`; usuario/contraseña de admin y token solo se rellenan en la fila del manager;
+  `ssh_password` va vacío si solo se usa clave. Las contraseñas de la base de datos y de Redis y la API key no van a ningún CSV.
+- `files/update_cluster_csv.py` (`--kind cluster|user`; `files/update_user_csv.py` es `--kind user`) actualiza por `node` /
+  `kasm_user`, ordena, toma un único `flock` para todo el ciclo y reemplaza el fichero de forma atómica. Los datos no
+  secretos de la fila van por stdin en JSON; los secretos se leen de los ficheros `.pass` de `kasm_credentials_dir` (los
+  que ya crean `kasm_manager`, `kasm_credentials` y `kasm_user`) o, si se indican, del entorno (`KASM_CSV_SSH_PASSWORD`,
+  `KASM_CSV_KASM_ADMIN_PASSWORD`, `KASM_CSV_KASM_USER_PASSWORD`) y entonces se guardan en esos ficheros. Nunca por la línea de comandos.
+- El CSV se genera siempre desde `<kasm_credentials_dir>/cluster-meta.json` (sin secretos) y esos ficheros, de modo que
+  `--from-credentials` lo reconstruye **sin tocar los nodos** y con los mismos bytes. Si falta un secreto obligatorio
+  falla, en vez de escribir una contraseña vacía.
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `kasm_credentials_users` | `[]` | Usuarios de `user-access`: `{username, group, workspaces: [nombres], password (opcional)}` |
+| `kasm_credentials_kasm_version` | `{{ kasm_version \| default('1.19.0') }}` | Valor de la columna `kasm_version` |
+
+`cluster_csv.yml` se ejecuta en el manager y necesita `kasm_manager_hostname` y los grupos `kasm_cluster` / `kasm_manager`;
+`user_csv.yml` necesita `kasm_manager_hostname`. Vea la [guía del clúster](../../docs/cluster.es.md).

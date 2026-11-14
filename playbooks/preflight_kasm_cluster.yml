@@ -1,0 +1,52 @@
+---
+# Checks manager and agents before any role changes them. Fails the whole run
+# (any_errors_fatal) when one node is not ready; gathering facts already proves
+# that SSH and Python work. Nothing is installed or modified.
+#
+#   ansible-playbook -i <inventory> pepesan.kasm.preflight_kasm_cluster
+- name: Preflight the Kasm manager and agents
+  hosts: kasm_cluster
+  gather_facts: true
+  any_errors_fatal: true
+  vars:
+    kasm_cluster_node_role: "{{ 'manager' if inventory_hostname in groups['kasm_manager'] else 'agent' }}"
+    kasm_cluster_marker: "/opt/kasm/.pepesan_install_complete_{{ kasm_cluster_node_role }}"
+  tasks:
+    - name: Check the public DNS A record of this node against its ansible_host
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm
+        tasks_from: dns_preflight.yml
+      vars:
+        kasm_domain: >-
+          {{ kasm_manager_hostname if kasm_cluster_node_role == 'manager'
+          else kasm_agent_public_hostname
+          | default(inventory_hostname if '.' in inventory_hostname
+          else (node_name | default(inventory_hostname)) ~ '.' ~ (kasm_base_domain | default('example.com'))) }}
+        kasm_dns_expected_ips: ["{{ ansible_host | default(inventory_hostname) }}"]
+
+    - name: Require a supported operating system
+      ansible.builtin.assert:
+        that:
+          - >-
+            (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] in ['24.04', '26.04'])
+            or (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] in ['12', '13'])
+        fail_msg: >-
+          Unsupported operating system for the Kasm manager/agent roles:
+          {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          (supported: Ubuntu 24.04 and 26.04, Debian 12 and 13).
+        quiet: true
+
+    - name: Look for the install-complete marker of this node
+      ansible.builtin.stat:
+        path: "{{ kasm_cluster_marker }}"
+      register: kasm_cluster_marker_stat
+
+    # A node that is already installed listens on 443 on purpose: only a fresh node must have 80/443 free.
+    - name: Check that ports 80 and 443 are free on a node that is not installed yet
+      ansible.builtin.command:
+        argv: [ss, -H, -ltn, "sport = :{{ item }}"]
+      loop: [80, 443]
+      register: kasm_cluster_listeners
+      changed_when: false
+      failed_when: kasm_cluster_listeners.stdout | length > 0
+      when: not kasm_cluster_marker_stat.stat.exists

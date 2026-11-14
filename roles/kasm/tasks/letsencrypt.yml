@@ -5,21 +5,26 @@
 # certbot-issued cert there, restarting kasm_proxy, installing the renewal
 # deploy-hook, and verifying HTTPS actually comes up.
 
+# kasm_cert_dir ("" = all-in-one) is the directory Kasm reads its certificate
+# from. The all-in-one layout keeps it inside the container's data volume under
+# a versioned path, so it is searched; roles that install Kasm on the host
+# (kasm_manager) pass the official /opt/kasm/current/certs.
 - name: Find Kasm's real certificate directory
   ansible.builtin.find:
     paths: "{{ kasm_dir }}/data/opt/kasm"
     patterns: "kasm_nginx.crt"
     recurse: true
   register: kasm_cert_found
+  when: kasm_cert_dir | length == 0
 
 - name: Set the certificate path fact
   ansible.builtin.set_fact:
-    kasm_cert_dir: "{{ kasm_cert_found.files[0].path | dirname }}"
+    kasm_cert_target_dir: "{{ kasm_cert_dir if kasm_cert_dir | length > 0 else (kasm_cert_found.files[0].path | dirname) }}"
 
 - name: Copy the certificate into Kasm
   ansible.builtin.copy:
     src: "/etc/letsencrypt/live/{{ kasm_domain }}/fullchain.pem"
-    dest: "{{ kasm_cert_dir }}/kasm_nginx.crt"
+    dest: "{{ kasm_cert_target_dir }}/kasm_nginx.crt"
     remote_src: true
     mode: "0644"
   register: kasm_cert_copy
@@ -27,7 +32,7 @@
 - name: Copy the private key into Kasm
   ansible.builtin.copy:
     src: "/etc/letsencrypt/live/{{ kasm_domain }}/privkey.pem"
-    dest: "{{ kasm_cert_dir }}/kasm_nginx.key"
+    dest: "{{ kasm_cert_target_dir }}/kasm_nginx.key"
     remote_src: true
     mode: "0600"
   register: kasm_key_copy
@@ -36,7 +41,7 @@
 # actually changed — on every later run with an unchanged cert this is a
 # no-op, instead of bouncing kasm_proxy on every single playbook run.
 - name: Restart kasm_proxy to pick up the Let's Encrypt certificate
-  ansible.builtin.command: docker exec kasm docker restart kasm_proxy
+  ansible.builtin.command: "{{ kasm_cert_docker }} restart kasm_proxy"
   when: kasm_cert_copy is changed or kasm_key_copy is changed
   changed_when: true
 
@@ -45,6 +50,17 @@
     src: letsencrypt_deploy_hook.sh
     dest: /etc/letsencrypt/renewal-hooks/deploy/restart-kasm.sh
     mode: "0755"
+
+# The hook defaults to the all-in-one layout; for another layout it reads this
+# file (see letsencrypt_deploy_hook.sh).
+- name: Tell the renewal deploy-hook where Kasm keeps its certificate
+  ansible.builtin.copy:
+    content: |
+      KASM_CERT_DIR={{ kasm_cert_dir | quote }}
+      KASM_DOCKER={{ kasm_cert_docker | quote }}
+    dest: /etc/letsencrypt/kasm-deploy-hook.env
+    mode: "0644"
+  when: kasm_cert_dir | length > 0
 
 - name: Wait for kasm_proxy to come back up after the restart
   ansible.builtin.wait_for:

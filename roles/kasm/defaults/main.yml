@@ -1,5 +1,9 @@
 ---
 kasm_dir: /opt/kasm
+# Command prefix that reaches the Kasm database container. All-in-one (Kasm
+# inside the "kasm" container): the default. Official host layout: "docker exec kasm_db".
+kasm_db_exec: "docker exec kasm docker exec kasm_db"
+
 kasm_version: "1.19.0"
 kasm_image_tag: "1.19.0-ls154"
 
@@ -39,3 +43,10 @@ kasm_certbot_auto_renew: "{{ kasm_letsencrypt_enabled | bool }}"
 # DinD, not on the host, so there is no host service competing with
 # certbot's standalone HTTP-01 challenge on port 80.
 kasm_certbot_create_standalone_stop_services: false
+
+# Where Kasm reads its TLS certificate and how to reach its Docker, used by
+# letsencrypt.yml and the renewal deploy-hook. Empty kasm_cert_dir = all-in-one:
+# the directory is searched under kasm_dir. For Kasm installed directly on the
+# host use /opt/kasm/current/certs and "docker" (see the kasm_manager role).
+kasm_cert_dir: ""
+kasm_cert_docker: "docker exec kasm docker"

@@ -58,3 +58,13 @@ kasm_credentials_csv_name: >-
      | regex_replace('^-+|-+$', '') | default('inventory', true)) }}.csv
 
 kasm_credentials_csv_dir: "{{ lookup('ansible.builtin.env', 'PWD') | default(playbook_dir, true) }}"
+
+# Cluster access CSVs (tasks_from: cluster_csv.yml and user_csv.yml): they are
+# written next to access-data-*.csv, in kasm_credentials_csv_dir, and named
+# cluster-access-<kasm_training_project>.csv and user-access-<kasm_training_project>.csv.
+# Version shown in the kasm_version column of cluster-access.
+kasm_credentials_kasm_version: "{{ kasm_version | default('1.19.0') }}"
+# Users of user-access.csv. Each item: username, group, workspaces (list of
+# names) and, optionally, password (otherwise the password file that the
+# kasm_user role generates is read).
+kasm_credentials_users: []

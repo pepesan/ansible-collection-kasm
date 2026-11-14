@@ -19,6 +19,8 @@ workspaces, usuarios, sesiones y desinstalación limpia. Cada paso es idempotent
 | [`linux_user`](roles/linux_user/README.es.md) | Usuario Linux genérico con contraseña aleatoria persistida (`student` es una envoltura fina) |
 | [`kasm_credentials`](roles/kasm_credentials/README.es.md) | Contraseñas aleatorias de Kasm y el CSV de accesos (una fila por servidor) |
 | [`kasm`](roles/kasm/README.es.md) | Instala Kasm Workspaces, con TLS de Let's Encrypt por defecto |
+| [`kasm_manager`](roles/kasm_manager/README.es.md) | Modo clúster: manager oficial de Kasm (base de datos + aplicación web) en el host |
+| [`kasm_agent`](roles/kasm_agent/README.es.md) | Modo clúster: agente oficial de Kasm que se registra en el manager |
 | [`kasm_group`](roles/kasm_group/README.es.md) | Política de sesión y endurecimiento de un grupo de Kasm (keepalive, portapapeles, descargas...) |
 | [`kasm_docker_image`](roles/kasm_docker_image/README.es.md) | Descarga o elimina una imagen dentro del Docker de Kasm |
 | [`kasm_workspace`](roles/kasm_workspace/README.es.md) | Registra o borra un workspace (imagen por defecto: un escritorio Ubuntu 26.04 pequeño) |
@@ -240,6 +242,19 @@ la salida a un log con `tee` y sígala con `tail -f`.
 La guía de uso reúne los valores por defecto más comunes, las referencias de
 variables de cada rol y la tabla de problemas habituales:
 [docs/usage.es.md](docs/usage.es.md).
+
+## Modo clúster (manager + agentes)
+
+Además del todo-en-uno, `pepesan.kasm.site_kasm_cluster` instala el layout oficial en varias máquinas: un manager (rol
+`kasm_manager`) y N agentes (`kasm_agent`), tras un preflight de todos los nodos. Escribe dos CSV en
+`kasm_credentials_csv_dir`: `cluster-access-<proyecto>.csv` (solo para el operador: nodos, SSH, contraseña de admin y
+token de agentes) y `user-access-<proyecto>.csv` (lo que se reparte a los alumnos). Grupos de inventario, variables,
+orden y desinstalación: [docs/cluster.es.md](docs/cluster.es.md).
+
+```bash
+ansible-playbook -i inventory.ini pepesan.kasm.preflight_kasm_cluster   # solo comprobaciones
+ansible-playbook -i inventory.ini pepesan.kasm.site_kasm_cluster
+```
 
 
 ## Contraseñas

@@ -1,0 +1,136 @@
+---
+# Kasm Workspaces on several machines, official layout: one manager (database +
+# web app) and N agents. Inventory groups: kasm_manager (one host), kasm_agents,
+# and kasm_cluster (children: both). See docs/cluster.md.
+#
+#   ansible-playbook -i <inventory> pepesan.kasm.site_kasm_cluster
+#
+# Order: preflight of every node -> manager -> agents (in batches of
+# kasm_cluster_agents_serial, default all at once) -> workspace image on the
+# agents -> workspaces, groups and users on the manager -> the two access CSVs.
+#
+# Variables of the cluster (all optional):
+#   kasm_cluster_agents_serial   agents per batch ("100%" by default)
+#   kasm_cluster_workspaces      list of {name, image}; empty = the kasm_workspace role's default workspace.
+#                                Other kasm_workspace_* variables (cores, memory...) apply to all of them.
+#   kasm_cluster_groups          list of group names; empty = "All Users". kasm_group_* variables apply to all of them.
+#   kasm_cluster_users           list of {username, group, workspaces: [names], password (optional)}
+
+- name: Preflight every cluster node before any role runs
+  ansible.builtin.import_playbook: pepesan.kasm.preflight_kasm_cluster
+
+- name: Install the Kasm manager
+  hosts: kasm_manager
+  roles:
+    - pepesan.kasm.docker
+    - pepesan.kasm.kasm_manager
+
+- name: Install the Kasm agents once the manager is up
+  hosts: kasm_agents
+  serial: "{{ kasm_cluster_agents_serial | default('100%') }}"
+  roles:
+    - pepesan.kasm.docker
+    - pepesan.kasm.kasm_agent
+
+- name: Preserve pre-pulled workspace images on registered agents
+  hosts: kasm_manager
+  tasks:
+    - name: Count agents with aggressive image pruning
+      ansible.builtin.command: >-
+        docker exec kasm_db psql -U kasmapp -d kasm -t -c
+        "SELECT count(*) FROM servers WHERE prune_images_mode IS DISTINCT FROM 'No Prune';"
+      register: kasm_cluster_prune_count
+      changed_when: false
+
+    - name: Disable image pruning before pre-pull
+      ansible.builtin.command: >-
+        docker exec kasm_db psql -U kasmapp -d kasm -c
+        "UPDATE servers SET prune_images_mode = 'No Prune' WHERE prune_images_mode IS DISTINCT FROM 'No Prune';"
+      when: kasm_cluster_prune_count.stdout | trim | int > 0
+      changed_when: true
+
+- name: Pull the workspace images on the agents
+  hosts: kasm_agents
+  vars:
+    kasm_docker_image_exec: docker  # Docker on the host, not the all-in-one DinD
+  tasks:
+    - name: Pull the default workspace image
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_docker_image
+      when: kasm_cluster_workspaces | default([], true) | length == 0
+
+    - name: Pull the image of each workspace
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_docker_image
+      vars:
+        kasm_docker_image_name: "{{ item.image }}"
+      loop: "{{ kasm_cluster_workspaces | default([], true) }}"
+      loop_control:
+        label: "{{ item.image }}"
+
+- name: Configure workspaces, groups and users on the manager and write the access CSVs
+  hosts: kasm_manager
+  vars:
+    kasm_db_exec: docker exec kasm_db
+    kasm_workspace_dind_cleanup: false
+    kasm_credentials_users: "{{ kasm_cluster_users | default([], true) }}"
+  tasks:
+    - name: Create the default workspace
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_workspace
+      when: kasm_cluster_workspaces | default([], true) | length == 0
+
+    - name: Create each workspace
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_workspace
+      vars:
+        kasm_workspace_name: "{{ item.name }}"
+        kasm_workspace_image: "{{ item.image }}"
+      loop: "{{ kasm_cluster_workspaces | default([], true) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Configure the default group
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_group
+      when: kasm_cluster_groups | default([], true) | length == 0
+
+    - name: Configure each group
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_group
+      vars:
+        kasm_group_workspace_names: "{{ kasm_cluster_workspaces | default([], true) | map(attribute='name') | list }}"
+        kasm_group_name: "{{ item }}"
+      loop: "{{ kasm_cluster_groups | default([], true) }}"
+
+    - name: Create the users with a generated password
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_user
+      vars:
+        kasm_user_username: "{{ item.username }}"
+        kasm_user_group_name: "{{ item.group | default('') }}"
+      loop: "{{ kasm_credentials_users | rejectattr('password', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.username }}"
+
+    - name: Create the users with a fixed password
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_user
+      vars:
+        kasm_user_username: "{{ item.username }}"
+        kasm_user_password: "{{ item.password }}"
+        kasm_user_group_name: "{{ item.group | default('') }}"
+      loop: "{{ kasm_credentials_users | selectattr('password', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.username }}"
+
+    - name: Write the operator access CSV (cluster-access)
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_credentials
+        tasks_from: cluster_csv.yml
+
+    - name: Write the learner access CSV (user-access)
+      ansible.builtin.include_role:
+        name: pepesan.kasm.kasm_credentials
+        tasks_from: user_csv.yml
+      when: kasm_credentials_users | length > 0
