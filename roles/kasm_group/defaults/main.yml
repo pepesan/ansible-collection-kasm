@@ -1,9 +1,16 @@
 ---
+# Command prefix that reaches the Kasm PostgreSQL container. The default is
+# the all-in-one install (Kasm inside the "kasm" DinD container). For the
+# official host install (manager) use: "docker exec kasm_db".
+kasm_db_exec: "docker exec kasm docker exec kasm_db"
 kasm_dir: /opt/kasm
 
 # Which Kasm group these settings apply to. Run the role again with a
 # different kasm_group_name to configure another group (e.g. "Instructors").
 kasm_group_name: "All Users"
+# Optional workspace display names (images.friendly_name) to grant to this
+# group; empty preserves existing installations. Workspaces must exist first.
+kasm_group_workspace_names: []
 
 # "present" creates the group if it doesn't exist yet, then applies the
 # settings below. There is no "absent": deleting a Kasm group is not

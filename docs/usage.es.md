@@ -251,3 +251,8 @@ tail -f /opt/kasm/data/opt/kasm_deploy.log
 | `kasm_credentials` falla con un inventario en línea de comandos (`-i 10.0.0.1,`) | Corregido en esta colección: el nombre del CSV se deriva del inventario y se sanea. |
 | La sesión se pausa pasada una hora | Política de grupo. Suba `kasm_group_keepalive_seconds`. |
 | `ps -u student` en el anfitrión muestra procesos Python de Kasm | Los contenedores de servicio de Kasm corren con el UID 1001, el mismo número que el usuario `student`. No son procesos de `student`. No haga `pkill -u student`: mataría la API de Kasm. |
+
+## Despliegue en clúster
+
+Para la topología oficial manager + agentes (grupos de inventario, variables, el flujo `site_kasm_cluster` y los CSV de
+clúster y de usuarios) vea la [guía del clúster](cluster.es.md).

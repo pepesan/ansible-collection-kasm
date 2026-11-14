@@ -28,11 +28,46 @@ un host real.
 | `kasm_uninstall_remove_letsencrypt_certs` | `false` | Elimina `/etc/letsencrypt/live/<kasm_domain>` en el host. Desactivado por defecto: fuerza pedir un certificado nuevo en la siguiente instalación, y Let's Encrypt limita esas peticiones por dominio |
 | `kasm_domain` | `{{ node_name }}.{{ kasm_base_domain }}` | Solo se lee si `kasm_uninstall_remove_letsencrypt_certs` es true |
 
+## Layouts
+
+`kasm_uninstall_layout` elige qué se elimina:
+
+| Layout | Qué elimina |
+|---|---|
+| `allinone` (por defecto) | Todo lo descrito arriba: el contenedor `kasm`, sus datos y la imagen en caché. Comportamiento sin cambios |
+| `manager` | Manager oficial en el host: contenedores de Kasm (`kasm_*`: app, db, proxy…), sus redes Docker, volúmenes de datos (`kasm_db_<versión>`), imágenes de Kasm y `kasm_dir` (`/opt/kasm`, que incluye `current/certs`). Antes detiene los servicios con `kasm_dir/current/bin/stop` |
+| `agent` | Agente oficial en el host: lo mismo, más los contenedores de sesión (creados desde imágenes con la etiqueta `com.kasmweb.image=true`) y esas imágenes |
+
+`manager` y `agent` nunca desinstalan Docker (eso lo hace aparte un playbook
+tipo `uninstall_kasm_and_docker.yml`) y nunca tocan `/etc/letsencrypt`: los
+certificados se conservan salvo que `kasm_uninstall_remove_letsencrypt_certs`
+sea true (entonces define también `kasm_domain` con el nombre del certificado).
+Los layouts toleran un nodo donde Docker o Kasm ya no están.
+
+**Antes se comprueban las sesiones activas** (`kasm_uninstall_check_sessions`,
+por defecto `true`) y se avisa de ellas: el manager cuenta las filas
+`running`, `starting` y `paused` de la tabla `kasms` (con
+`kasm_uninstall_db_exec`, por defecto `docker exec kasm_db`); el agente cuenta
+los contenedores en marcha cuyo nombre no empieza por `kasm_`. Con
+`kasm_uninstall_abort_on_active_sessions: true` se detiene en vez de avisar.
+
+| Variable | Valor por defecto | Propósito |
+|---|---|---|
+| `kasm_uninstall_layout` | `allinone` | `allinone`, `manager` o `agent` |
+| `kasm_uninstall_check_sessions` | `true` | manager/agent: busca sesiones activas y avisa |
+| `kasm_uninstall_abort_on_active_sessions` | `false` | manager/agent: falla en vez de avisar si hay sesiones |
+| `kasm_uninstall_db_exec` | `docker exec kasm_db` | manager: prefijo que llega a PostgreSQL para la comprobación de sesiones |
+
+En `manager`/`agent`, `kasm_uninstall_remove_data` controla los volúmenes de
+datos de Docker, `kasm_uninstall_remove_image` las imágenes de Kasm
+(servicios y workspaces) y `kasm_uninstall_remove_all` el directorio
+`kasm_dir`. `kasm_image_tag` solo se aplica a `allinone`.
+
 ## Idempotencia
 
 Cada task es un `state: absent`, protegido por una comprobación previa de
-existencia (`stat` sobre el compose file). Ejecutarlo dos veces seguidas no
-hace nada la segunda vez.
+existencia (`stat` sobre el compose file; listar antes de borrar en
+`manager`/`agent`). Ejecutarlo dos veces seguidas no hace nada la segunda vez.
 
 ## Ejemplo
 

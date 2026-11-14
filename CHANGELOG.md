@@ -5,6 +5,30 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - Unreleased
+
+### Added
+- Cluster mode (official manager + agents layout): playbooks `site_kasm_cluster` (preflight, manager, agents in
+  `kasm_cluster_agents_serial` batches, images on the agents, workspaces/groups/users, CSV files) and
+  `preflight_kasm_cluster` (public DNS A record, operating system, free ports 80/443, SSH/Python; fails before any role runs).
+- Roles `kasm_manager` and `kasm_agent`; `kasm_db_exec` (kasm_workspace, kasm_group), `kasm_docker_image_exec`
+  (kasm_docker_image) and `kasm_uninstall_layout` (`manager`/`agent`) to work on the official layout; local copy of the
+  Kasm API key by `kasm_workspace`.
+- `kasm_credentials` writes `cluster-access-<project>.csv` (operator: nodes, SSH, admin password, agent token) and
+  `user-access-<project>.csv` (learners) with `tasks_from: cluster_csv.yml` / `user_csv.yml`: upsert by `node` /
+  `kasm_user`, sorted, atomic, mode 600, secrets only in the environment, regenerable from `.credentials/` without
+  touching the nodes (`update_cluster_csv.py --from-credentials`).
+- Cluster guide: [docs/cluster.md](docs/cluster.md) / [docs/cluster.es.md](docs/cluster.es.md).
+- The co-located manager database is protected on the public interface (IPv4/IPv6) by idempotent firewall rules reapplied at Docker startup.
+
+### Changed
+- The access CSV of the all-in-one mode (`access-data-*.csv`) and `update_credentials_csv.py` are unchanged.
+- Manager setup recovers from Kasm's already-active oneshot service when adding the app to the database host; validates the database token setting without assuming its stored representation equals the original token.
+- Agent installation recognizes a healthy container with a completed heartbeat instead of requiring an absent success message; it recovers an existing installed agent without running the installer again and protects its installer log with mode `0600`.
+- Named workspace grants for groups and optional user group membership are applied and verified idempotently in Kasm's `group_images` and `user_groups` relations.
+- Cluster deployments disable Kasm's aggressive server image pruning after agent registration, before pulling custom workspace images.
+- Co-located manager installation preserves database TLS files, PostgreSQL configuration and log-directory ownership when Kasm's app installer recreates the version directory.
+
 ## [0.1.3] - 2026-11-12
 
 ### Added

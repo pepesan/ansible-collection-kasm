@@ -98,6 +98,34 @@ un host, borra el marcador y vuelve a ejecutar.
 | `letsencrypt_email` | `admin@{{ kasm_base_domain }}` | Email de la cuenta de certbot (Let's Encrypt envía ahí los avisos de caducidad): fije uno real |
 | `kasm_admin_password` / `kasm_default_user_password` | — | Las aporta [`kasm_credentials`](../kasm_credentials/README.es.md); ejecuta ese rol antes o fíjalas tú mismo |
 
+## Variables para otros layouts (las usa `kasm_manager`)
+
+Por defecto el rol mantiene su comportamiento todo-en-uno. Estas variables permiten reutilizar las mismas piezas con Kasm
+instalado directamente en el host (ver [`kasm_manager`](../kasm_manager/README.es.md)):
+
+| Variable | Valor predeterminado | Función |
+|---|---|---|
+| `kasm_db_exec` | `docker exec kasm docker exec kasm_db` | Prefijo del comando para llegar al contenedor de la BD (después va `psql`). Layout oficial en host: `docker exec kasm_db`. Compartida con los roles que consultan la BD. |
+| `kasm_cert_dir` | `""` (todo-en-uno: se busca bajo `kasm_dir`) | Directorio del que Kasm lee `kasm_nginx.crt`/`.key`; `/opt/kasm/current/certs` en el layout de host. |
+| `kasm_cert_docker` | `docker exec kasm docker` | Comando de Docker para reiniciar `kasm_proxy` cuando cambia el certificado. |
+
+`files/fix_and_install_kasm.sh` se parametriza con variables de entorno; los valores por defecto son los del todo-en-uno, así
+que este rol se comporta exactamente igual que antes:
+
+| Variable | Valor predeterminado | Función |
+|---|---|---|
+| `KASM_RELEASE_DIR` | `/kasm_release` | Directorio del release descomprimido (`install.sh`, `profiles/`). |
+| `KASM_INSTALL_ARGS` | `--install-profile noninteractive` | Argumentos de `install.sh` (se añaden las contraseñas de admin/user). |
+| `KASM_PASSWORDS_IN_ARGS` | `true` | `false` en los roles que no siembran la BD (app). |
+| `KASM_REQUIRED_SERVICES` | `kasm_db kasm_api kasm_manager` | Contenedores que deben estar en marcha para dar la instalación por buena. |
+| `KASM_INSTALL_MARKER` | `/opt/kasm_install_complete` | Marcador escrito solo tras el éxito. |
+| `KASM_DOCKER` | `docker` | Prefijo del comando para ejecutar Docker (puede ser de varias palabras). |
+| `KASM_LOG_FILE` | `/opt/kasm_deploy.log` | Fichero de log (solo root). |
+| `KASM_INSTALL_PATCHES` | vacío | Expresiones `sed` (una por línea) aplicadas a `install.sh`. |
+
+El deploy-hook del certificado lee `/etc/letsencrypt/kasm-deploy-hook.env` (`KASM_CERT_DIR`, `KASM_DOCKER`) si existe; el rol
+lo escribe solo cuando `kasm_cert_dir` está definida.
+
 ## Log de instalación
 
 El script de instalación escribe el progreso en `<kasm_dir>/data/opt/kasm_deploy.log` en el servidor; síguelo con `tail -f`.

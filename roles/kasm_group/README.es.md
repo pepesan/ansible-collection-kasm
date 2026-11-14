@@ -48,6 +48,7 @@ Si necesitas borrar un grupo, hazlo desde el panel de administración de Kasm.
 | `kasm_group_keepalive_action` | `pause` | `pause` o `delete` cuando expira el keepalive |
 | `kasm_group_allow_clipboard_down` / `_up` / `_seamless` | `false` | Bastionado de portapapeles |
 | `kasm_group_allow_downloads` / `_uploads` / `_printing` | `false` | Bastionado de ficheros/impresión |
+| `kasm_db_exec` | `docker exec kasm docker exec kasm_db` | Prefijo de comando que llega al contenedor PostgreSQL de Kasm. El valor por defecto es la instalación todo-en-uno (rol `kasm`); para la instalación oficial en el host (manager) usa `docker exec kasm_db` |
 
 El modo de pruning de imágenes (`prune_images_mode`) es a nivel de
 servidor, no de grupo, y se queda como tarea propia en

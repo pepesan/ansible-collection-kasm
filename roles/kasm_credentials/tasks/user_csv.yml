@@ -1,0 +1,39 @@
+---
+# Writes user-access-<project>.csv with one row per item of kasm_credentials_users
+# (the file that can be handed out to learners: no admin, IP or SSH data).
+# Run it on the manager: include_role with tasks_from: user_csv.yml.
+# Passwords are read from the files the kasm_user role generates
+# (<project>-<manager>-kasm-user-<user>.pass) unless the item carries its own.
+- name: Record every Kasm user in the user access CSV
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ role_path }}/files/update_user_csv.py"
+      - --csv-dir
+      - "{{ kasm_credentials_csv_dir }}"
+      - --credentials-dir
+      - "{{ kasm_credentials_dir }}"
+      - --project
+      - "{{ kasm_training_project }}"
+    stdin: "{{ kasm_credentials_user_row | to_json }}"
+  loop: "{{ kasm_credentials_users }}"
+  loop_control:
+    loop_var: kasm_credentials_user
+    label: "{{ kasm_credentials_user.username }}"
+  vars:
+    kasm_credentials_user_row:
+      kasm_url: "https://{{ kasm_manager_hostname }}"
+      kasm_user: "{{ kasm_credentials_user.username }}"
+      kasm_group: "{{ kasm_credentials_user.group | default('') }}"
+      workspaces: "{{ kasm_credentials_user.workspaces | default([]) | join(';') }}"
+      secret_files:
+        kasm_user_password: >-
+          {{ kasm_credentials_project_slug ~ inventory_hostname ~ '-kasm-user-'
+          ~ (kasm_credentials_user.username | regex_replace('[^A-Za-z0-9._-]+', '-')) ~ '.pass' }}
+  environment:
+    KASM_CSV_KASM_USER_PASSWORD: "{{ kasm_credentials_user.password | default('') }}"
+  register: kasm_credentials_user_csv_update
+  changed_when: "'csv: changed' in kasm_credentials_user_csv_update.stdout"
+  delegate_to: localhost
+  become: false
+  no_log: true

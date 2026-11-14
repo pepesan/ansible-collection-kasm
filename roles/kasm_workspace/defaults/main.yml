@@ -1,4 +1,21 @@
 ---
+# Command prefix that reaches the Kasm PostgreSQL container. The default is
+# the all-in-one install (Kasm inside the "kasm" DinD container). For the
+# official host install (manager) use: "docker exec kasm_db".
+kasm_db_exec: "docker exec kasm docker exec kasm_db"
+
+# Control-node directory that receives the local copy of Kasm's API key
+# (kasm-api-key-<inventory_hostname>.json). Defaults to kasm_credentials_dir
+# when defined, otherwise to the directory Ansible runs from (the path used
+# before this variable existed).
+kasm_workspace_api_key_local_dir: >-
+  {{ kasm_credentials_dir | default(lookup('ansible.builtin.env', 'PWD') | default(playbook_dir, true), true) }}
+
+# Deleting a workspace also closes its sessions, removes users' profile
+# directories and the Docker image in the DinD of THIS node. True for the
+# all-in-one install. Set false on an official manager: those live on the
+# agents (use kasm_docker_image there) and only the catalog entry is removed.
+kasm_workspace_dind_cleanup: true
 kasm_dir: /opt/kasm
 
 # present: create/reuse the workspace. absent: delete it (or all of them).

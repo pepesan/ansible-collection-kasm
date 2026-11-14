@@ -70,6 +70,22 @@ Las variables se agrupan por lo que configuran, no solo alfabéticamente:
 - **Solo con `state: absent`**: `kasm_workspace_clean_all` (borra todos los
   workspaces registrados en vez de uno), `kasm_workspace_delete_persistent_data`
   (por defecto `true` — irreversible, ver aviso abajo).
+- **Dónde se ejecuta cada cosa** (layout oficial manager/agentes):
+  `kasm_db_exec` (por defecto `docker exec kasm docker exec kasm_db`, la
+  instalación todo-en-uno; en un manager oficial usa `docker exec kasm_db`)
+  es el prefijo que llega a PostgreSQL, tanto al crear como al borrar.
+  `kasm_workspace_dind_cleanup` (por defecto `true`) hace que `state: absent`
+  también cierre sesiones, borre los directorios de perfil y elimine la
+  imagen del DinD del nodo; ponlo a `false` en un manager, donde eso vive en
+  los agentes (elimina allí la imagen con
+  [`kasm_docker_image`](../kasm_docker_image/README.es.md)) y solo se borra
+  la entrada del catálogo.
+- **Copia local de la API key**: `kasm_workspace_api_key_local_dir` es el
+  directorio del nodo de control que recibe
+  `kasm-api-key-<inventory_hostname>.json` (modo `0600`, se crea si falta).
+  Por defecto es `kasm_credentials_dir` si está definida y, si no, el
+  directorio desde el que se ejecuta Ansible (la ruta que se usaba antes de
+  esta variable). Apúntala a un directorio fuera del control de versiones.
 
 ## Borrado de datos persistentes
 

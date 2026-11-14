@@ -7,12 +7,9 @@ Creates or deletes a Kasm application user (e.g. `user@kasm.local`) via
 [`student`](../student/README.md)), a Kasm account inside the application
 itself.
 
-Unlike [`kasm_workspace`](../kasm_workspace/README.md) and
-[`kasm_group`](../kasm_group/README.md), Kasm's public API
-fully covers user management (`create_user`, `get_users`, `delete_user`), so
-this role is pure `ansible.builtin.uri` — no direct Postgres access, no
-wrapped bash script. It's the first Kasm role in this collection with zero
-SQL.
+Kasm's public API handles user creation and deletion. Optional group membership
+uses Kasm's `user_groups` relation via `kasm_db_exec`; an API-created user is
+not automatically a member of the group named in a CSV.
 
 ## Requires an existing API key
 
@@ -40,6 +37,8 @@ username exists yet, `delete_user` only runs if one does.
 | `kasm_user_locked` / `_disabled` | `false` | Account flags |
 | `kasm_url` | `https://127.0.0.1:443` | Kasm base URL |
 | `kasm_user_api_key_file` | `{{ kasm_dir }}/.kasm_api_key.json` | Where to read the API key from |
+| `kasm_user_group_name` | `""` | Optional group to join for `present`; the group must exist before this role runs. Empty leaves membership unchanged |
+| `kasm_db_exec` | `docker exec kasm docker exec kasm_db` | DB command prefix for group membership; use `docker exec kasm_db` on an official manager |
 
 ## Example
 

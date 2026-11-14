@@ -1,0 +1,24 @@
+---
+# Official Kasm Workspaces host installation for an agent node.
+# Shared collection contract variables; retain their public names.
+kasm_dir: /opt/kasm  # noqa var-naming[no-role-prefix]
+kasm_version: "1.19.0"  # noqa var-naming[no-role-prefix]
+kasm_base_domain: example.com  # noqa var-naming[no-role-prefix]
+kasm_agent_public_hostname: >-
+  {{ inventory_hostname if
+  (inventory_hostname | regex_search('\\.') is not none)
+  else node_name ~ '.' ~ kasm_base_domain }}
+kasm_manager_hostname: ""  # noqa var-naming[no-role-prefix]
+kasm_credentials_dir: >- # noqa var-naming[no-role-prefix]
+  {{ lookup('env', 'KASM_DATA_DIR') |
+  default(playbook_dir ~ '/data', true) }}/.credentials
+kasm_manager_token: >-  # noqa var-naming[no-role-prefix]
+  {{ lookup('ansible.builtin.file', kasm_credentials_dir ~ '/' ~
+  kasm_manager_hostname ~ '-manager-token.pass', errors='ignore') | trim }}
+kasm_agent_restrict_443_to_manager: false
+kasm_agent_install_url: >-
+  https://kasm-static-content.s3.amazonaws.com/kasm_release_{{
+  kasm_version }}.tar.gz
+kasm_agent_install_archive: >-
+  {{ kasm_dir }}/kasm_release_{{ kasm_version }}.tar.gz
+kasm_agent_marker: /opt/kasm/.pepesan_install_complete_agent

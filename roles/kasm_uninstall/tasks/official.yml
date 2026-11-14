@@ -1,0 +1,174 @@
+---
+# Layouts "manager" and "agent": official Kasm install on the host
+# (kasm_dir/current, containers kasm_*, Docker volumes kasm_db_<version>).
+# Docker itself is NOT uninstalled here. Everything is tolerant of a node
+# where Docker or Kasm is already gone, so it can be re-run.
+
+- name: Check that Docker is usable on this node
+  ansible.builtin.command: docker info
+  register: kasm_uninstall_docker_info
+  changed_when: false
+  failed_when: false
+
+- name: Set the Docker availability fact
+  ansible.builtin.set_fact:
+    kasm_uninstall_docker_ok: "{{ kasm_uninstall_docker_info.rc == 0 }}"
+
+# Sessions are looked up before anything is stopped. The manager asks its
+# database; an agent lists the running containers that are not Kasm services.
+- name: Count active sessions (manager, from the database)
+  ansible.builtin.command: >
+    {{ kasm_uninstall_db_exec }} psql -U kasmapp -d kasm -t -A -c
+    "SELECT count(*) FROM kasms WHERE operational_status IN ('running', 'starting', 'paused');"
+  register: kasm_uninstall_manager_sessions
+  changed_when: false
+  failed_when: false
+  when:
+    - kasm_uninstall_check_sessions | bool
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_layout == "manager"
+
+- name: List running session containers (agent)
+  ansible.builtin.command: docker ps --format '{% raw %}{{.Names}}{% endraw %}'
+  register: kasm_uninstall_agent_containers
+  changed_when: false
+  failed_when: false
+  when:
+    - kasm_uninstall_check_sessions | bool
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_layout == "agent"
+
+- name: Work out the number of active sessions
+  ansible.builtin.set_fact:
+    kasm_uninstall_active_sessions: >-
+      {{ (kasm_uninstall_manager_sessions.stdout | default('') | trim | int(0))
+      if kasm_uninstall_layout == 'manager'
+      else (kasm_uninstall_agent_containers.stdout_lines | default([])
+      | reject('match', 'kasm_') | list | length) }}
+  when: kasm_uninstall_check_sessions | bool
+
+- name: Warn about active sessions
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: {{ kasm_uninstall_active_sessions }} active Kasm session(s) on
+      {{ inventory_hostname }} will be destroyed by this uninstall.
+  when:
+    - kasm_uninstall_check_sessions | bool
+    - kasm_uninstall_active_sessions | int > 0
+
+- name: Stop if active sessions exist and aborting was requested
+  ansible.builtin.fail:
+    msg: >-
+      {{ kasm_uninstall_active_sessions }} active session(s) on
+      {{ inventory_hostname }}; kasm_uninstall_abort_on_active_sessions is true.
+  when:
+    - kasm_uninstall_check_sessions | bool
+    - kasm_uninstall_abort_on_active_sessions | bool
+    - kasm_uninstall_active_sessions | int > 0
+
+- name: Check whether the official Kasm stop script exists
+  ansible.builtin.stat:
+    path: "{{ kasm_dir }}/current/bin/stop"
+  register: kasm_uninstall_stop_script
+
+- name: Stop the Kasm services with the official script
+  ansible.builtin.command: "{{ kasm_dir }}/current/bin/stop"
+  changed_when: true
+  failed_when: false
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_stop_script.stat.exists
+
+# Session containers are the ones started from Kasm workspace images
+# (label com.kasmweb.image=true).
+- name: List the Kasm service containers
+  ansible.builtin.command: docker container ls -aq --filter name=kasm_
+  register: kasm_uninstall_service_containers
+  changed_when: false
+  when: kasm_uninstall_docker_ok
+
+- name: List the session containers (agent)
+  ansible.builtin.shell: >-
+    set -o pipefail;
+    for img in $(docker images -q --filter label=com.kasmweb.image=true | sort -u);
+    do docker ps -aq --filter ancestor="$img"; done
+  args:
+    executable: /bin/bash
+  register: kasm_uninstall_session_containers
+  changed_when: false
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_layout == "agent"
+
+- name: Remove the Kasm service and session containers
+  ansible.builtin.command:
+    argv: "{{ ['docker', 'rm', '-f'] + _kasm_uninstall_containers }}"
+  vars:
+    _kasm_uninstall_containers: >-
+      {{ ((kasm_uninstall_service_containers.stdout_lines | default([]))
+      + (kasm_uninstall_session_containers.stdout_lines | default([])))
+      | unique | list }}
+  changed_when: true
+  when:
+    - kasm_uninstall_docker_ok
+    - _kasm_uninstall_containers | length > 0
+
+- name: List the Kasm Docker networks
+  ansible.builtin.command: docker network ls -q --filter name=kasm_
+  register: kasm_uninstall_networks
+  changed_when: false
+  when: kasm_uninstall_docker_ok
+
+- name: Remove the Kasm Docker networks
+  ansible.builtin.command:
+    argv: "{{ ['docker', 'network', 'rm'] + kasm_uninstall_networks.stdout_lines }}"
+  changed_when: true
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_networks.stdout_lines | length > 0
+
+- name: List the Kasm data volumes
+  ansible.builtin.command: docker volume ls -q --filter name=kasm_
+  register: kasm_uninstall_volumes
+  changed_when: false
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_remove_data | bool
+
+- name: Remove the Kasm data volumes (database)
+  ansible.builtin.command:
+    argv: "{{ ['docker', 'volume', 'rm', '-f'] + kasm_uninstall_volumes.stdout_lines }}"
+  changed_when: true
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_remove_data | bool
+    - kasm_uninstall_volumes.stdout_lines | length > 0
+
+- name: List the Kasm images (services and workspaces)
+  ansible.builtin.shell: >-
+    set -o pipefail;
+    { docker images -q --filter 'reference=kasmweb/*';
+    docker images -q --filter label=com.kasmweb.image=true; } | sort -u
+  args:
+    executable: /bin/bash
+  register: kasm_uninstall_images
+  changed_when: false
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_remove_image | bool
+
+- name: Remove the Kasm images
+  ansible.builtin.command:
+    argv: "{{ ['docker', 'rmi', '-f'] + kasm_uninstall_images.stdout_lines }}"
+  changed_when: true
+  when:
+    - kasm_uninstall_docker_ok
+    - kasm_uninstall_remove_image | bool
+    - kasm_uninstall_images.stdout_lines | length > 0
+
+# Includes current/certs (copies); /etc/letsencrypt is not under kasm_dir.
+- name: Remove the Kasm installation directory
+  ansible.builtin.file:
+    path: "{{ kasm_dir }}"
+    state: absent
+  when: kasm_uninstall_remove_all | bool

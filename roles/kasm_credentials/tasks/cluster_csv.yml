@@ -1,0 +1,55 @@
+---
+# Writes cluster-access-<project>.csv with one row per host of the kasm_cluster
+# group. Run it on the manager: include_role with tasks_from: cluster_csv.yml.
+# Secrets are read from (and, when given, stored in) the control node's
+# kasm_credentials_dir; the CSV can be regenerated from there without touching
+# the nodes (see files/update_cluster_csv.py --from-credentials).
+- name: Record every cluster node in the cluster access CSV
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ role_path }}/files/update_cluster_csv.py"
+      - --kind
+      - cluster
+      - --csv-dir
+      - "{{ kasm_credentials_csv_dir }}"
+      - --credentials-dir
+      - "{{ kasm_credentials_dir }}"
+      - --project
+      - "{{ kasm_training_project }}"
+    stdin: "{{ kasm_credentials_cluster_row | to_json }}"
+  loop: "{{ groups['kasm_cluster'] }}"
+  loop_control:
+    loop_var: kasm_credentials_node
+  vars:
+    kasm_credentials_is_manager: "{{ kasm_credentials_node in groups['kasm_manager'] }}"
+    kasm_credentials_node_vars: "{{ hostvars[kasm_credentials_node] }}"
+    kasm_credentials_cluster_row:
+      role: "{{ 'manager' if kasm_credentials_is_manager else 'agent' }}"
+      node: "{{ kasm_credentials_node }}"
+      fqdn: >-
+        {{ kasm_manager_hostname if kasm_credentials_is_manager
+        else kasm_credentials_node_vars.kasm_agent_public_hostname
+        | default(kasm_credentials_node if '.' in kasm_credentials_node
+        else (kasm_credentials_node_vars.node_name | default(kasm_credentials_node))
+        ~ '.' ~ (kasm_base_domain | default('example.com'))) }}
+      ip: "{{ kasm_credentials_node_vars.ansible_host | default(kasm_credentials_node) }}"
+      ssh_user: "{{ kasm_credentials_node_vars.ansible_user | default('root') }}"
+      kasm_url: "https://{{ kasm_manager_hostname }}"
+      kasm_admin_user: "{{ kasm_credentials_admin_user if kasm_credentials_is_manager else '' }}"
+      kasm_version: "{{ kasm_credentials_kasm_version }}"
+      secret_files: >-
+        {{ ({'ssh_password': kasm_credentials_project_slug ~ kasm_credentials_node ~ '-ssh.pass'})
+        | combine({'kasm_admin_password': kasm_credentials_project_slug ~ kasm_credentials_node ~ '-kasm-admin.pass',
+        'kasm_manager_token': kasm_manager_hostname ~ '-manager-token.pass'} if kasm_credentials_is_manager else {}) }}
+  environment:
+    KASM_CSV_SSH_PASSWORD: >-
+      {{ kasm_credentials_node_vars.ansible_password
+      | default(kasm_credentials_node_vars.ansible_ssh_pass | default('')) }}
+    KASM_CSV_KASM_ADMIN_PASSWORD: "{{ kasm_admin_password if kasm_credentials_is_manager else '' }}"
+  register: kasm_credentials_cluster_csv_update
+  changed_when: "'csv: changed' in kasm_credentials_cluster_csv_update.stdout"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  no_log: true

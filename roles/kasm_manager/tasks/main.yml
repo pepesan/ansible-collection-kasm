@@ -1,0 +1,248 @@
+---
+# Kasm manager installed straight on the host with the official installer
+# (layout /opt/kasm/current), database and web app roles on the same host and
+# no local agent. The generic install logic (patches, up to three attempts with
+# plugin recovery, success decided by running services) is the kasm role's
+# fix_and_install_kasm.sh, parametrized by KASM_* environment variables.
+
+- name: Require the manager hostname
+  ansible.builtin.assert:
+    that:
+      - kasm_manager_hostname | length > 0
+    fail_msg: Set kasm_manager_hostname to the FQDN of this manager.
+    quiet: true
+
+# Passwords of the Kasm admin and user, generated once per host and recorded in
+# the access CSV (same as the kasm role does in site_kasm.yml).
+- name: Generate and record the Kasm admin and user passwords
+  ansible.builtin.include_role:
+    name: pepesan.kasm.kasm_credentials
+    public: true
+  vars:
+    kasm_domain: "{{ kasm_manager_hostname }}"
+  when: kasm_admin_password is not defined or kasm_default_user_password is not defined
+
+- name: Check public DNS for the manager hostname
+  ansible.builtin.include_role:
+    name: pepesan.kasm.kasm
+    tasks_from: dns_preflight.yml
+  vars:
+    kasm_domain: "{{ kasm_manager_hostname }}"
+  when:
+    - kasm_manager_letsencrypt_enabled | bool
+    - not (kasm_dns_preflight_done | default(false) | bool)
+
+- name: Create the credentials directory on the control node
+  ansible.builtin.file:
+    path: "{{ kasm_credentials_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+# Token that agents use to register: read from the credential file (created
+# with a random value the first time) unless one is given with -e.
+- name: Resolve the agent registration token
+  ansible.builtin.set_fact:
+    kasm_manager_token: >-
+      {{ lookup('ansible.builtin.password', kasm_manager_token_file ~ ' length=40 chars=ascii_letters,digits') }}
+  when: kasm_manager_token | default('', true) | length == 0
+  no_log: true
+
+- name: Persist the agent registration token on the control node
+  ansible.builtin.copy:
+    content: "{{ kasm_manager_token }}\n"
+    dest: "{{ kasm_manager_token_file }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  no_log: true
+
+- name: Resolve the database password
+  ansible.builtin.set_fact:
+    kasm_manager_db_password: >-
+      {{ lookup('ansible.builtin.password', kasm_manager_db_password_file ~ ' length=24 chars=ascii_letters,digits') }}
+  when: kasm_manager_db_password | default('', true) | length == 0
+  no_log: true
+
+- name: Install Docker Engine and Kasm host prerequisites
+  ansible.builtin.include_role:
+    name: pepesan.kasm.docker
+
+- name: Block public access to the co-located database
+  ansible.builtin.include_tasks: restrict_db.yml
+
+# Third-party roles by Jeff Geerling (see the kasm role): swap, which Kasm's
+# installer checks for, and the Let's Encrypt certificate.
+- name: Configure swap and obtain the TLS certificate (geerlingguy roles)
+  block:
+    - name: Configure the swapfile (geerlingguy.swap)
+      ansible.builtin.include_role:
+        name: geerlingguy.swap
+      vars:
+        swap_file_size_mb: "{{ kasm_manager_swap_file_size_mb }}"
+
+    - name: Obtain the Let's Encrypt certificate (geerlingguy.certbot)
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+      vars:
+        certbot_create_if_missing: true
+        certbot_create_method: standalone
+        certbot_admin_email: "{{ kasm_manager_certbot_admin_email }}"
+        certbot_certs:
+          - domains:
+              - "{{ kasm_manager_hostname }}"
+        certbot_auto_renew: true
+        certbot_create_standalone_stop_services: []
+      when: kasm_manager_letsencrypt_enabled | bool
+  rescue:
+    - name: Explain how to install the required third-party roles
+      ansible.builtin.fail:
+        msg: >-
+          Failed while running geerlingguy.swap / geerlingguy.certbot. If these
+          third-party roles are not installed (this collection does not ship them),
+          install them with: ansible-galaxy role install -r requirements.yml
+          (see the collection README). Original error:
+          {{ ansible_failed_result.msg | default('the role could not be loaded') }}
+
+- name: Check whether the manager is already installed
+  ansible.builtin.stat:
+    path: "{{ kasm_manager_marker }}"
+  register: kasm_manager_marker_stat
+
+- name: Install the Kasm manager
+  when: not kasm_manager_marker_stat.stat.exists
+  block:
+    - name: Create the Kasm directory
+      ansible.builtin.file:
+        path: "{{ kasm_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Download the Kasm release archive
+      ansible.builtin.get_url:
+        url: "{{ kasm_manager_release_url }}"
+        dest: "{{ kasm_manager_release_archive }}"
+        checksum: "{{ kasm_manager_release_checksum or omit }}"
+        mode: "0644"
+
+    - name: Extract the Kasm release archive
+      ansible.builtin.unarchive:
+        src: "{{ kasm_manager_release_archive }}"
+        dest: "{{ kasm_dir }}"
+        remote_src: true
+        creates: "{{ kasm_manager_release_dir }}/install.sh"
+
+    # MGR-01: kept on the host in case the real flags differ from the docs.
+    - name: Save the installer help (install.sh --help) on the host
+      ansible.builtin.shell: >-
+        bash {{ (kasm_manager_release_dir ~ '/install.sh') | quote }} --help
+        > {{ kasm_manager_install_help | quote }} 2>&1; cat {{ kasm_manager_install_help | quote }}
+      args:
+        executable: /bin/bash
+      register: kasm_manager_help
+      changed_when: false
+      failed_when: kasm_manager_help.stdout | length == 0
+
+    - name: Read the flags the installer really accepts
+      ansible.builtin.set_fact:
+        kasm_manager_help_flags: "{{ kasm_manager_help.stdout | regex_findall('(?<![\\w-])--?[A-Za-z][\\w-]*') | unique }}"
+
+    - name: Pick the real flag for each option
+      ansible.builtin.set_fact:
+        kasm_manager_flag: >-
+          {{ kasm_manager_flag | default({}) | combine({item.key: (item.value | select('in', kasm_manager_help_flags) | list | first | default(''))}) }}
+      loop: "{{ kasm_manager_install_flags | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Check that install.sh knows every flag the role needs
+      ansible.builtin.assert:
+        that:
+          - kasm_manager_flag.values() | select('equalto', '') | list | length == 0
+          - "'--admin-password' in kasm_manager_help_flags"
+          - "'--user-password' in kasm_manager_help_flags"
+        fail_msg: >-
+          install.sh of Kasm {{ kasm_version }} does not advertise some flag the
+          role needs (resolved: {{ kasm_manager_flag }}). Compare with
+          {{ kasm_manager_install_help }} on the host and adjust
+          kasm_manager_install_flags.
+        quiet: true
+
+    # One include per install.sh run: a failed step stops this host, so the app
+    # role is never installed over a failed database role.
+    - name: Run install.sh for the database role, then the web app role
+      ansible.builtin.include_tasks: install_step.yml
+      loop:
+        - db
+        - app
+      loop_control:
+        loop_var: kasm_manager_step
+
+    # Password-type settings are stored encoded by Kasm. A raw grep in conf/
+    # cannot validate the token; agent registration tests authentication.
+    - name: Check the manager token setting exists in the database
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - kasm_db
+          - psql
+          - -U
+          - kasmapp
+          - -d
+          - kasm
+          - -At
+          - -c
+          - "SELECT count(*) FROM settings WHERE category='manager' AND name='token' AND value <> '';"
+      register: kasm_manager_token_check
+      changed_when: false
+
+    - name: Require the manager token setting
+      ansible.builtin.assert:
+        that:
+          - kasm_manager_token_check.stdout | trim == '1'
+        fail_msg: >-
+          The manager token setting is absent from the Kasm database.
+          Check {{ kasm_manager_install_help }} and the database role installation;
+          actual token authentication is verified by agent registration.
+        quiet: true
+
+    - name: List the running containers
+      ansible.builtin.command: docker ps --format '{% raw %}{{.Names}}{% endraw %}'
+      register: kasm_manager_containers
+      changed_when: false
+
+    - name: Verify the manager services are up and no agent runs here
+      ansible.builtin.assert:
+        that:
+          - (kasm_manager_db_services ~ ' ' ~ kasm_manager_app_services).split() | difference(kasm_manager_containers.stdout_lines) | length == 0
+          - "'kasm_agent' not in kasm_manager_containers.stdout_lines"
+        fail_msg: >-
+          Expected running: {{ kasm_manager_db_services }} {{ kasm_manager_app_services }};
+          no kasm_agent. Running: {{ kasm_manager_containers.stdout_lines | join(' ') }}
+        quiet: true
+
+    - name: Mark the manager install as complete
+      ansible.builtin.file:
+        path: "{{ kasm_manager_marker }}"
+        state: touch
+        mode: "0600"
+        modification_time: preserve
+        access_time: preserve
+
+# Certificate for kasm_proxy (official layout) and the renewal deploy-hook.
+- name: Configure real HTTPS (Let's Encrypt) in /opt/kasm/current/certs
+  ansible.builtin.include_role:
+    name: pepesan.kasm.kasm
+    tasks_from: letsencrypt.yml
+  vars:
+    kasm_domain: "{{ kasm_manager_hostname }}"
+    kasm_cert_dir: "{{ kasm_manager_cert_dir }}"
+    kasm_cert_docker: docker
+  when: kasm_manager_letsencrypt_enabled | bool
+
+- name: Record the Kasm role of this host
+  ansible.builtin.set_fact:
+    kasm_role: manager
