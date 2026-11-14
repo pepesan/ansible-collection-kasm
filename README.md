@@ -19,6 +19,8 @@ clean uninstall. Every step is idempotent: running it again changes nothing.
 | [`linux_user`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/linux_user/README.md) | Generic Linux user with a persisted random password (`student` is a thin wrapper) |
 | [`kasm_credentials`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_credentials/README.md) | Random Kasm passwords and the access CSV (one row per server) |
 | [`kasm`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm/README.md) | Installs Kasm Workspaces, with TLS from Let's Encrypt by default |
+| [`kasm_manager`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_manager/README.md) | Cluster mode: official Kasm manager (database + web app) on the host |
+| [`kasm_agent`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_agent/README.md) | Cluster mode: official Kasm agent that registers with the manager |
 | [`kasm_group`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_group/README.md) | Session policy and hardening of a Kasm group (keepalive, clipboard, downloads...) |
 | [`kasm_docker_image`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_docker_image/README.md) | Pulls or removes an image inside Kasm's Docker |
 | [`kasm_workspace`](https://github.com/pepesan/ansible-collection-kasm/blob/main/roles/kasm_workspace/README.md) | Registers or deletes a workspace (default image: a small Ubuntu 26.04 desktop) |
@@ -240,6 +242,19 @@ output to a log with `tee` and follow it with `tail -f`.
 
 The usage guide covers common defaults, per-role variable references, and
 troubleshooting: [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
+
+## Cluster mode (manager + agents)
+
+Besides the all-in-one install, `pepesan.kasm.site_kasm_cluster` installs the official layout on several machines: a
+manager (roles `kasm_manager`) and N agents (`kasm_agent`), with a preflight of every node first. It writes two CSV
+files in `kasm_credentials_csv_dir`: `cluster-access-<project>.csv` (operator only: nodes, SSH, admin password and
+agent token) and `user-access-<project>.csv` (what you hand out to learners). Inventory groups, variables, order and
+uninstall: [docs/cluster.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/cluster.md).
+
+```bash
+ansible-playbook -i inventory.ini pepesan.kasm.preflight_kasm_cluster   # checks only
+ansible-playbook -i inventory.ini pepesan.kasm.site_kasm_cluster
+```
 
 
 ## Passwords

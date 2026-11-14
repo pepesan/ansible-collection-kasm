@@ -1,0 +1,66 @@
+---
+# FQDN of this manager (what agents and users connect to). Required.
+kasm_manager_hostname: "" # noqa var-naming[no-role-prefix]
+
+# Shared collection variables; keep their public names.
+kasm_dir: /opt/kasm # noqa var-naming[no-role-prefix]
+kasm_version: "1.19.0" # noqa var-naming[no-role-prefix]
+kasm_base_domain: example.com # noqa var-naming[no-role-prefix]
+kasm_credentials_dir: >- # noqa var-naming[no-role-prefix]
+  {{ lookup('env', 'KASM_DATA_DIR') |
+  default(playbook_dir ~ '/data', true) }}/.credentials
+
+# Registration token of the agents. Generated once and persisted on the control
+# node in kasm_manager_token_file (mode 0600); pass -e kasm_manager_token=...
+# to use your own (it is saved to the same file). Letters and digits only.
+kasm_manager_token_file: "{{ kasm_credentials_dir }}/{{ kasm_manager_hostname }}-manager-token.pass"
+# Database password, generated the same way (<manager>-manager-db.pass).
+kasm_manager_db_password_file: "{{ kasm_credentials_dir }}/{{ kasm_manager_hostname }}-manager-db.pass"
+
+# Release archive. The installer is extracted to kasm_manager_release_dir.
+kasm_manager_release_url: "https://kasm-static-content.s3.amazonaws.com/kasm_release_{{ kasm_version }}.tar.gz"
+kasm_manager_release_archive: "{{ kasm_dir }}/kasm_release_{{ kasm_version }}.tar.gz"
+kasm_manager_release_dir: "{{ kasm_dir }}/kasm_release"
+# Optional checksum for get_url, e.g. "sha256:<hex>". Empty = not checked.
+kasm_manager_release_checksum: ""
+
+# The real flags of install.sh are read from its --help output (saved to
+# kasm_manager_install_help). Each entry lists the accepted spellings, in
+# order of preference; the role fails if the installer knows none of them.
+kasm_manager_install_flags:
+  role: ["--role"]
+  eula: ["--accept-eula", "-e"]
+  db_hostname: ["--db-hostname", "-q"]
+  db_password: ["--db-password", "-Q"]
+  manager_token: ["--manager-token", "-M"]
+kasm_manager_install_help: "{{ kasm_dir }}/install-help.txt"
+kasm_manager_log_dir: /var/log
+
+# Address of the database as seen from the kasm_api and kasm_manager
+# containers of this same host.
+kasm_manager_db_hostname: "{{ ansible_facts['default_ipv4']['address'] | default(kasm_manager_hostname) }}"
+
+# Extra install.sh arguments for each role (one string, split on spaces) and
+# sed expressions (a list) applied to install.sh before running it, for
+# installer quirks on a given OS (e.g. an OS check that rejects a new release).
+kasm_manager_db_extra_args: ""
+kasm_manager_app_extra_args: ""
+kasm_manager_installer_patches: []
+
+# Containers that must be Up for the install to count as done. kasm_agent
+# must NOT be running: this host is a manager only.
+kasm_manager_db_services: kasm_db
+kasm_manager_app_services: kasm_api kasm_manager kasm_proxy
+
+# Install-complete markers: one per install.sh run and the role's own, written
+# last, after every check.
+kasm_manager_marker: /opt/kasm/.pepesan_install_complete_manager
+kasm_manager_db_marker: /opt/kasm/.pepesan_install_complete_manager_db
+kasm_manager_app_marker: /opt/kasm/.pepesan_install_complete_manager_app
+
+# TLS: real Let's Encrypt certificate for kasm_manager_hostname (same switch
+# and e-mail as the kasm role). Kasm reads it from /opt/kasm/current/certs.
+kasm_manager_letsencrypt_enabled: "{{ kasm_letsencrypt_enabled | default(true) | bool }}"
+kasm_manager_certbot_admin_email: "{{ letsencrypt_email | default('admin@' ~ kasm_base_domain) }}"
+kasm_manager_swap_file_size_mb: "{{ kasm_swap_file_size_mb | default('4096') }}"
+kasm_manager_cert_dir: /opt/kasm/current/certs

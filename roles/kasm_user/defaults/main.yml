@@ -3,6 +3,10 @@ kasm_dir: /opt/kasm
 kasm_url: "https://127.0.0.1:443"
 
 kasm_user_username: ""
+# Optional group membership for present users. Empty preserves the existing
+# API-only behavior; when set, the role uses the same Kasm DB access as kasm_group.
+kasm_user_group_name: ""
+kasm_db_exec: "docker exec kasm docker exec kasm_db"
 # Password of the Kasm user being created. Random by default (20 characters),
 # generated once and persisted per host and user so repeated runs reuse it;
 # pass kasm_user_password to set a fixed one. It is a different variable from

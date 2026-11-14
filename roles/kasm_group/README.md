@@ -3,7 +3,7 @@
 **Fully qualified name:** `pepesan.kasm.kasm_group` (collection [`pepesan.kasm`](https://galaxy.ansible.com/ui/repo/published/pepesan/kasm/))
 
 Idempotently configures Kasm group-level settings — session keepalive and
-hardening (clipboard/downloads/uploads/printing) — for a given group.
+hardening — and optionally grants named workspaces to a group.
 Extracted out of what used to be a single "configure everything after
 install" script so it can be run against any group, re-run safely, and
 report accurate changed/unchanged status per setting.
@@ -41,10 +41,12 @@ If you need to remove a group, do it from Kasm's admin UI.
 | `kasm_group_name` | `All Users` | Target group; re-run the role with a different value to configure another group |
 | `kasm_group_state` | `present` | Only `present` is supported (see above) |
 | `kasm_group_priority` | `100` | Used only when creating a new group |
+| `kasm_group_workspace_names` | `[]` | Workspace display names (`images.friendly_name`) to grant to this group; each must exist and be unambiguous. An empty list leaves grants unchanged |
 | `kasm_group_keepalive_seconds` | `3600` | Session keepalive timeout |
 | `kasm_group_keepalive_action` | `pause` | `pause` or `delete` when the keepalive expires |
 | `kasm_group_allow_clipboard_down` / `_up` / `_seamless` | `false` | Clipboard hardening |
 | `kasm_group_allow_downloads` / `_uploads` / `_printing` | `false` | File/printing hardening |
+| `kasm_db_exec` | `docker exec kasm docker exec kasm_db` | Command prefix that reaches the Kasm PostgreSQL container. The default is the all-in-one install (`kasm` role); for the official host install (manager) use `docker exec kasm_db` |
 
 Image-pruning mode (`prune_images_mode`) is server-wide, not per group, and
 stays as its own task in [`kasm`](../kasm/README.md) instead of living here.

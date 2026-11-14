@@ -1,0 +1,34 @@
+---
+# Layout "allinone": the install made by the kasm role (linuxserver/kasm
+# container with its own Docker daemon, compose project in kasm_dir).
+- name: Check whether the Kasm compose file still exists
+  ansible.builtin.stat:
+    path: "{{ kasm_dir }}/compose.yaml"
+  register: kasm_uninstall_compose_file
+
+- name: Stop and remove the Kasm container (and its DinD networks/volumes)
+  community.docker.docker_compose_v2:
+    project_src: "{{ kasm_dir }}"
+    files:
+      - compose.yaml
+    state: absent
+    remove_volumes: true
+  when: kasm_uninstall_compose_file.stat.exists
+
+- name: Remove the Kasm container image from the host
+  community.docker.docker_image:
+    name: "lscr.io/linuxserver/kasm:{{ kasm_image_tag }}"
+    state: absent
+  when: kasm_uninstall_remove_image | bool
+
+- name: Remove the persisted Kasm data (database, certs, install marker, profiles)
+  ansible.builtin.file:
+    path: "{{ kasm_dir }}/data"
+    state: absent
+  when: kasm_uninstall_remove_data | bool
+
+- name: Remove the rest of the Kasm directory (compose.yaml, init script)
+  ansible.builtin.file:
+    path: "{{ kasm_dir }}"
+    state: absent
+  when: kasm_uninstall_remove_all | bool

@@ -6,10 +6,15 @@
 # is read first and the UPSERT only runs when it differs from the desired
 # one, so a second run reports no changes (checked in the end-to-end run
 # against a real Kasm server).
+#
+# Every psql call goes through kasm_db_exec, the command prefix that reaches
+# the "kasm_db" container: the all-in-one default goes through the DinD
+# ("docker exec kasm docker exec kasm_db"), the official install runs
+# "docker exec kasm_db" directly on the host.
 
 - name: Look up the target group's id
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
     "SELECT group_id FROM groups WHERE name = '{{ kasm_group_name }}';"
   register: kasm_group_id_lookup
   changed_when: false
@@ -23,7 +28,7 @@
 # account for, instead of guessing at a DELETE that could break Kasm.
 - name: Create the group if it does not exist yet ({{ kasm_group_state }})
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -c
     "INSERT INTO groups (name, priority) VALUES ('{{ kasm_group_name }}', {{ kasm_group_priority }});"
   when:
     - kasm_group_state == "present"
@@ -32,7 +37,7 @@
 
 - name: Re-check the group's id after creation
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
     "SELECT group_id FROM groups WHERE name = '{{ kasm_group_name }}';"
   # Registered under its own name, never reused from the initial lookup
   # above: re-registering a *conditional* task onto the same variable
@@ -62,7 +67,7 @@
 
 - name: Read each setting's current value
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
     "SELECT value FROM group_settings WHERE group_id = '{{ kasm_group_id }}' AND name = '{{ item.name }}';"
   register: kasm_group_setting_current
   changed_when: false
@@ -72,7 +77,7 @@
 
 - name: Upsert settings that differ from the desired value
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -c "
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -c "
       DO $$
       BEGIN
         IF EXISTS (
@@ -99,7 +104,7 @@
 
 - name: Verify the applied values
   ansible.builtin.command: >
-    docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm -t -c
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
     "SELECT value FROM group_settings WHERE group_id = '{{ kasm_group_id }}' AND name = '{{ item.name }}';"
   register: kasm_group_setting_verify
   changed_when: false
@@ -107,3 +112,46 @@
   loop: "{{ kasm_group_setting_values }}"
   loop_control:
     label: "{{ item.name }}"
+
+- name: Resolve workspaces granted to this group
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT image_id FROM images WHERE friendly_name = convert_from(decode('{{ item | b64encode }}', 'base64'), 'UTF8');"
+  register: kasm_group_workspace_ids
+  changed_when: false
+  failed_when: kasm_group_workspace_ids.rc != 0 or kasm_group_workspace_ids.stdout_lines | length != 1
+  loop: "{{ kasm_group_workspace_names }}"
+
+- name: Check existing workspace grants
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT count(*) FROM group_images WHERE group_id = '{{ kasm_group_id }}'
+    AND image_id = '{{ item.stdout | trim }}';"
+  register: kasm_group_workspace_grants
+  changed_when: false
+  loop: "{{ kasm_group_workspace_ids.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Grant missing workspaces to the group
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -c
+    "INSERT INTO group_images (group_id, image_id)
+    VALUES ('{{ kasm_group_id }}', '{{ item.item.stdout | trim }}');"
+  when: item.stdout | trim == "0"
+  changed_when: true
+  loop: "{{ kasm_group_workspace_grants.results }}"
+  loop_control:
+    label: "{{ item.item.item }}"
+
+- name: Verify workspace grants
+  ansible.builtin.command: >
+    {{ kasm_db_exec }} psql -U kasmapp -d kasm -t -c
+    "SELECT count(*) FROM group_images WHERE group_id = '{{ kasm_group_id }}'
+    AND image_id = '{{ item.stdout | trim }}';"
+  register: kasm_group_workspace_verify
+  changed_when: false
+  failed_when: kasm_group_workspace_verify.rc != 0 or kasm_group_workspace_verify.stdout | trim != "1"
+  loop: "{{ kasm_group_workspace_ids.results }}"
+  loop_control:
+    label: "{{ item.item }}"

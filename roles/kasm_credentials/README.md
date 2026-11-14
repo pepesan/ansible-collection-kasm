@@ -99,3 +99,33 @@ head -1 access-data-*.csv                 # the columns
 cut -d, -f1-3 access-data-*.csv           # Kasm URL, IP and inventory name
 ls -l .credentials/                       # one file per password, mode 600
 ```
+
+## Cluster access CSVs
+
+Cluster mode (`pepesan.kasm.site_kasm_cluster`) writes two more files with `tasks_from: cluster_csv.yml` and
+`tasks_from: user_csv.yml`, next to `access-data-*.csv` in `kasm_credentials_csv_dir` (mode 600, named after
+`kasm_training_project`). They are separate because the existing CSV mixes the admin password with the learner's:
+
+| File | For | Rows | Columns |
+|---|---|---|---|
+| `cluster-access-<project>.csv` | the operator; **do not hand it out** | one per node (`kasm_cluster` group) | `role`, `node`, `fqdn`, `ip`, `ssh_user`, `ssh_password`, `kasm_url`, `kasm_admin_user`, `kasm_admin_password`, `kasm_manager_token`, `kasm_version` |
+| `user-access-<project>.csv` | learners | one per Kasm user | `kasm_url`, `kasm_user`, `kasm_user_password`, `kasm_group`, `workspaces` (separated by `;`) |
+
+- `role` is `manager` or `agent`; admin user/password and token are only filled on the manager row; `ssh_password` is
+  empty when only a key is used. Database and Redis passwords and the API key are not in any CSV.
+- `files/update_cluster_csv.py` (`--kind cluster|user`; `files/update_user_csv.py` is `--kind user`) upserts by `node` /
+  `kasm_user`, sorts, takes one `flock` for the whole cycle and replaces the file atomically. Non-secret row data goes
+  on stdin as JSON; secrets are read from the `.pass` files in `kasm_credentials_dir` (the ones `kasm_manager`,
+  `kasm_credentials` and `kasm_user` already create) or, if given, from the environment (`KASM_CSV_SSH_PASSWORD`,
+  `KASM_CSV_KASM_ADMIN_PASSWORD`, `KASM_CSV_KASM_USER_PASSWORD`) and then stored in those files. Never on the command line.
+- The CSV is always rendered from `<kasm_credentials_dir>/cluster-meta.json` (no secrets) plus those files, so
+  `--from-credentials` rebuilds it **without touching the nodes** with the same bytes. A missing required secret fails
+  instead of writing an empty password.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `kasm_credentials_users` | `[]` | Users of `user-access`: `{username, group, workspaces: [names], password (optional)}` |
+| `kasm_credentials_kasm_version` | `{{ kasm_version \| default('1.19.0') }}` | Value of the `kasm_version` column |
+
+`cluster_csv.yml` runs on the manager and needs `kasm_manager_hostname` and the `kasm_cluster` / `kasm_manager` groups;
+`user_csv.yml` needs `kasm_manager_hostname`. See the [cluster guide](../../docs/cluster.md).

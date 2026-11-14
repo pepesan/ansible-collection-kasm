@@ -94,6 +94,34 @@ If you meet that state on a host, delete the marker and re-run.
 | `letsencrypt_email` | `admin@{{ kasm_base_domain }}` | Certbot account email (Let's Encrypt sends expiry notices there): set a real one |
 | `kasm_admin_password` / `kasm_default_user_password` | — | Provided by [`kasm_credentials`](../kasm_credentials/README.md); run that role first or set these yourself |
 
+## Variables for other layouts (used by `kasm_manager`)
+
+The role keeps its all-in-one behaviour by default. These knobs let the same pieces serve Kasm installed straight on the host
+(see [`kasm_manager`](../kasm_manager/README.md)):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `kasm_db_exec` | `docker exec kasm docker exec kasm_db` | Command prefix to reach the database container (`psql` runs after it). Official host layout: `docker exec kasm_db`. Shared with the roles that query the database. |
+| `kasm_cert_dir` | `""` (all-in-one: searched under `kasm_dir`) | Directory Kasm reads `kasm_nginx.crt`/`.key` from; `/opt/kasm/current/certs` on the host layout. |
+| `kasm_cert_docker` | `docker exec kasm docker` | Docker command used to restart `kasm_proxy` after the certificate changes. |
+
+`files/fix_and_install_kasm.sh` is parametrized by environment variables; the defaults are the all-in-one values, so this role
+behaves exactly as before:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KASM_RELEASE_DIR` | `/kasm_release` | Directory with the extracted release (`install.sh`, `profiles/`). |
+| `KASM_INSTALL_ARGS` | `--install-profile noninteractive` | `install.sh` arguments (the admin/user passwords are appended). |
+| `KASM_PASSWORDS_IN_ARGS` | `true` | `false` for roles that do not seed the database (app). |
+| `KASM_REQUIRED_SERVICES` | `kasm_db kasm_api kasm_manager` | Containers that must be running for the install to count as successful. |
+| `KASM_INSTALL_MARKER` | `/opt/kasm_install_complete` | Marker written only after success. |
+| `KASM_DOCKER` | `docker` | Command prefix to run Docker (may be several words). |
+| `KASM_LOG_FILE` | `/opt/kasm_deploy.log` | Log file (root only). |
+| `KASM_INSTALL_PATCHES` | empty | `sed` expressions (one per line) applied to `install.sh`. |
+
+The certificate deploy-hook reads `/etc/letsencrypt/kasm-deploy-hook.env` (`KASM_CERT_DIR`, `KASM_DOCKER`) when it exists; the
+role writes it only when `kasm_cert_dir` is set.
+
 ## Install log
 
 The install script writes progress to `<kasm_dir>/data/opt/kasm_deploy.log` on the server (follow it with `tail -f`). The log

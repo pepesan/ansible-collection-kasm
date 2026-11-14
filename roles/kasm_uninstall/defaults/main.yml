@@ -1,4 +1,21 @@
 ---
+# What was installed:
+#   allinone - the kasm role's single linuxserver/kasm container (default).
+#   manager  - official Kasm manager on the host (app + db + proxy services).
+#   agent    - official Kasm agent on the host (agent + session containers).
+# manager and agent remove Kasm's containers, networks, data volumes,
+# images and kasm_dir; they never uninstall Docker (a playbook does that)
+# and keep /etc/letsencrypt unless kasm_uninstall_remove_letsencrypt_certs.
+kasm_uninstall_layout: allinone
+
+# manager/agent: look for active sessions before removing anything and warn
+# about them. Set the second variable to true to stop instead of warning.
+kasm_uninstall_check_sessions: true
+kasm_uninstall_abort_on_active_sessions: false
+
+# manager: command prefix that reaches the Kasm PostgreSQL container.
+kasm_uninstall_db_exec: "docker exec kasm_db"
+
 # Same path used by the kasm role to install — must match to find anything.
 kasm_dir: /opt/kasm
 

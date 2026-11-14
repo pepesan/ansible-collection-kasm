@@ -1,4 +1,9 @@
 ---
+# Command prefix used to run Docker for pull/inspect/rmi/prune. The default
+# is the all-in-one install (Kasm's nested Docker, reached via the "kasm"
+# container). On official agent hosts (and any host running Docker directly)
+# use: "docker".
+kasm_docker_image_exec: "docker exec kasm docker"
 # Follows kasm_workspace_image when that role is in the play, so the image
 # that gets pulled is the one the workspace uses. Default (present only):
 # pepesan/core-ubuntu-resolute:1.20. Removing (absent) always needs an explicit name.

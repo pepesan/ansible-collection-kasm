@@ -29,9 +29,15 @@ set -e
 
 CLEAN_ALL="${KASM_CLEAN_ALL:-false}"
 DELETE_PERSISTENT_DATA="${KASM_DELETE_PERSISTENT_DATA:-true}"
+# true (default, all-in-one): this node also runs Kasm's DinD, so session
+# containers, profile directories and the image are cleaned up here. false
+# (official manager): those live on the agents; only the catalog is touched.
+DIND_CLEANUP="${KASM_DIND_CLEANUP:-true}"
 
 PSQL() {
-  docker exec kasm docker exec kasm_db psql -U kasmapp -d kasm "$@"
+  # Unquoted on purpose: KASM_DB_EXEC is a multi-word command prefix.
+  # shellcheck disable=SC2086
+  ${KASM_DB_EXEC:-docker exec kasm docker exec kasm_db} psql -U kasmapp -d kasm "$@"
 }
 
 delete_one() {
@@ -65,13 +71,17 @@ delete_one() {
   # on which user opened it.
   echo ""
   echo ">> Checking for active sessions of this workspace..."
-  local SESSION_CONTAINERS
-  SESSION_CONTAINERS=$(docker exec kasm docker ps -q --filter "ancestor=${IMAGE_NAME}")
+  local SESSION_CONTAINERS=""
+  if [ "$DIND_CLEANUP" = "true" ]; then
+    SESSION_CONTAINERS=$(docker exec kasm docker ps -q --filter "ancestor=${IMAGE_NAME}")
+  else
+    echo "   (KASM_DIND_CLEANUP=false: session containers live on the agents, not checked here)"
+  fi
   if [ -n "$SESSION_CONTAINERS" ]; then
     echo ">> Closing active session(s): $(echo "$SESSION_CONTAINERS" | tr '\n' ' ')"
     docker exec kasm docker rm -f $SESSION_CONTAINERS
     echo "OK Session(s) closed."
-  else
+  elif [ "$DIND_CLEANUP" = "true" ]; then
     echo "OK No active sessions of this workspace."
   fi
   # Also clean up any "kasms" row still pointing at those already-removed
@@ -86,7 +96,9 @@ delete_one() {
   # an already-closed session (the normal case when cleaning up a workspace)
   # would be invisible even though its profile is still on disk.
   local PERSISTED_DIRS=""
-  if [ -n "$PERSISTENT_PROFILE_PATH" ]; then
+  if [ -n "$PERSISTENT_PROFILE_PATH" ] && [ "$DIND_CLEANUP" != "true" ]; then
+    echo "   persistent_profile_path: ${PERSISTENT_PROFILE_PATH} (stored on the agents, not checked here)"
+  elif [ -n "$PERSISTENT_PROFILE_PATH" ]; then
     echo "   persistent_profile_path: ${PERSISTENT_PROFILE_PATH}"
     # Note: the real directory on disk uses the image_id WITH dashes
     # (Postgres' canonical uuid format, which is exactly what $IMAGE_ID
@@ -129,13 +141,15 @@ delete_one() {
     echo "        To delete them too: -e kasm_delete_persistent_data=true"
   fi
 
-  echo ""
-  echo ">> Deleting Docker image '${IMAGE_NAME}' from Kasm's DinD to free up space..."
-  if docker exec kasm docker rmi "${IMAGE_NAME}" 2>&1; then
-    echo "OK Image '${IMAGE_NAME}' deleted."
-  else
-    echo "WARNING Could not delete image '${IMAGE_NAME}' (it may be in use by an active session"
-    echo "        or shared with another tag). The workspace is already removed from the catalog either way."
+  if [ "$DIND_CLEANUP" = "true" ]; then
+    echo ""
+    echo ">> Deleting Docker image '${IMAGE_NAME}' from Kasm's DinD to free up space..."
+    if docker exec kasm docker rmi "${IMAGE_NAME}" 2>&1; then
+      echo "OK Image '${IMAGE_NAME}' deleted."
+    else
+      echo "WARNING Could not delete image '${IMAGE_NAME}' (it may be in use by an active session"
+      echo "        or shared with another tag). The workspace is already removed from the catalog either way."
+    fi
   fi
 }
 
@@ -160,5 +174,7 @@ fi
 echo ""
 echo "======================================================================"
 echo ">> Cleaning up dangling layers/images no longer used by any workspace/container..."
-docker exec kasm docker image prune -f || true
-echo "OK Disk space cleanup complete."
+if [ "$DIND_CLEANUP" = "true" ]; then
+  docker exec kasm docker image prune -f || true
+  echo "OK Disk space cleanup complete."
+fi

@@ -22,6 +22,7 @@
       ansible.builtin.command: bash {{ kasm_dir }}/create_workspace.sh
       environment:
         KASM_DIR: "{{ kasm_dir }}"
+        KASM_DB_EXEC: "{{ kasm_db_exec }}"
         KASM_IMAGE: "{{ kasm_workspace_image }}"
         KASM_WORKSPACE_NAME: "{{ kasm_workspace_name }}"
         KASM_WORKSPACE_DESC: "{{ kasm_workspace_desc }}"
@@ -66,18 +67,30 @@
       ansible.builtin.slurp:
         path: "{{ kasm_dir }}/.kasm_api_key.json"
       register: kasm_workspace_api_key_remote_content
+      no_log: true
       when: kasm_workspace_api_key_remote_stat.stat.exists
 
-    # Local (control node) copy, gitignored via .credentials/, so other
+    # Local (control node) copy in kasm_workspace_api_key_local_dir, so other
     # tasks/playbooks can reuse the same API key without going back to
-    # Kasm's database over SSH.
+    # Kasm's database over SSH. Keep that directory out of git.
+    # No mode on purpose: the directory may already exist (the current
+    # directory by default) and its permissions must not be changed.
+    - name: Ensure the local API key directory exists  # noqa risky-file-permissions
+      ansible.builtin.file:
+        path: "{{ kasm_workspace_api_key_local_dir }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+      when: kasm_workspace_api_key_remote_stat.stat.exists
+
     - name: Save a local copy of Kasm's API key
       ansible.builtin.copy:
         content: "{{ kasm_workspace_api_key_remote_content.content | b64decode }}"
-        dest: "{{ (lookup('ansible.builtin.env', 'PWD') | default(playbook_dir, true)) }}/kasm-api-key-{{ inventory_hostname }}.json"
+        dest: "{{ kasm_workspace_api_key_local_dir }}/kasm-api-key-{{ inventory_hostname }}.json"
         mode: "0600"
       delegate_to: localhost
       become: false
+      no_log: true
       when: kasm_workspace_api_key_remote_stat.stat.exists
 
 - name: Delete Kasm workspace(s)
@@ -98,6 +111,8 @@
       ansible.builtin.command: bash {{ kasm_dir }}/delete_workspace.sh
       environment:
         KASM_IMAGE: "{{ kasm_workspace_image }}"
+        KASM_DB_EXEC: "{{ kasm_db_exec }}"
+        KASM_DIND_CLEANUP: "{{ kasm_workspace_dind_cleanup | lower }}"
         KASM_CLEAN_ALL: "{{ kasm_workspace_clean_all | lower }}"
         KASM_DELETE_PERSISTENT_DATA: "{{ kasm_workspace_delete_persistent_data | lower }}"
       register: kasm_workspace_delete_output

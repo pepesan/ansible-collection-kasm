@@ -20,6 +20,7 @@ already-present image or removing an already-absent one is a no-op.
 | `kasm_docker_image_name` | `pepesan/core-ubuntu-resolute:1.20` when `present` (follows `kasm_workspace_image`); **required** when `absent` | e.g. `user/image:tag`. Removing never falls back to a default |
 | `kasm_docker_image_state` | `present` | `present` pulls if missing; `absent` removes if present |
 | `kasm_docker_image_prune_after_remove` | `true` | Also run `docker image prune -f` after removing (absent only) |
+| `kasm_docker_image_exec` | `docker exec kasm docker` | Prefix used to run Docker (inspect/pull/rmi/prune). The default reaches Kasm's nested Docker of the all-in-one install; on official agent hosts use `docker` |
 
 `state: absent` fails if a workspace still references the image or a
 session still uses it (Docker refuses to remove an image in use) — delete

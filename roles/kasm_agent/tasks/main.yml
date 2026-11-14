@@ -1,0 +1,108 @@
+---
+- name: Require manager hostname
+  ansible.builtin.assert:
+    that:
+      - kasm_manager_hostname | length > 0
+    fail_msg: Set kasm_manager_hostname to the manager FQDN.
+
+- name: Require manager registration token
+  ansible.builtin.assert:
+    that:
+      - kasm_manager_token | length > 0
+    fail_msg: >-
+      Set kasm_manager_token or store it in
+      {{ kasm_credentials_dir }}/<manager-hostname>-manager-token.pass
+      on the control node.
+  no_log: true
+
+- name: Install Docker Engine and Kasm host prerequisites
+  ansible.builtin.include_role:
+    name: pepesan.kasm.docker
+
+- name: Create Kasm installation directory
+  ansible.builtin.file:
+    path: "{{ kasm_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether this agent is already installed
+  ansible.builtin.stat:
+    path: "{{ kasm_agent_marker }}"
+  register: kasm_agent_marker_stat
+
+- name: Download Kasm release archive
+  ansible.builtin.get_url:
+    url: "{{ kasm_agent_install_url }}"
+    dest: "{{ kasm_agent_install_archive }}"
+    mode: "0644"
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Extract Kasm release archive
+  ansible.builtin.unarchive:
+    src: "{{ kasm_agent_install_archive }}"
+    dest: "{{ kasm_dir }}"
+    remote_src: true
+    creates: "{{ kasm_dir }}/release/install.sh"
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Ensure release directory exists at expected path
+  ansible.builtin.stat:
+    path: "{{ kasm_dir }}/release/install.sh"
+  register: kasm_agent_install_script
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Find extracted installer when archive layout has a versioned directory
+  ansible.builtin.find:
+    paths: "{{ kasm_dir }}"
+    patterns: install.sh
+    recurse: true
+    file_type: file
+  register: kasm_agent_install_candidates
+  when:
+    - not kasm_agent_marker_stat.stat.exists
+    - not (kasm_agent_install_script.stat.exists | default(false))
+
+- name: Fail when release does not contain install.sh
+  ansible.builtin.assert:
+    that:
+      - kasm_agent_install_candidates.matched | default(1) | int > 0
+    fail_msg: >-
+      Kasm release {{ kasm_version }} did not contain install.sh under
+      {{ kasm_dir }}.
+  when:
+    - not kasm_agent_marker_stat.stat.exists
+    - not (kasm_agent_install_script.stat.exists | default(false))
+
+- name: Select extracted installer path
+  ansible.builtin.set_fact:
+    kasm_agent_install_script_path: >-
+      {{ (kasm_agent_install_candidates.files | first).path
+      if kasm_agent_install_candidates.matched | default(0) | int > 0
+      else kasm_dir ~ '/release/install.sh' }}
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Capture installer help before installation
+  ansible.builtin.shell: >-
+    bash {{ kasm_agent_install_script_path | quote }} --help >
+    {{ (kasm_dir ~ '/install-help.txt') | quote }} 2>&1 || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Install agent with registration and verify services/check-in
+  ansible.builtin.script: agent_install.sh
+  environment:
+    KASM_AGENT_INSTALLER: "{{ kasm_agent_install_script_path }}"
+    KASM_AGENT_HOSTNAME: "{{ kasm_agent_public_hostname }}"
+    KASM_MANAGER_HOSTNAME: "{{ kasm_manager_hostname }}"
+    KASM_MANAGER_TOKEN: "{{ kasm_manager_token }}"
+    KASM_AGENT_MARKER: "{{ kasm_agent_marker }}"
+  register: kasm_agent_install_result
+  changed_when: true
+  no_log: true
+  when: not kasm_agent_marker_stat.stat.exists
+
+- name: Restrict agent TCP 443 to the manager when requested
+  ansible.builtin.include_tasks: firewall.yml
+  when: kasm_agent_restrict_443_to_manager | bool

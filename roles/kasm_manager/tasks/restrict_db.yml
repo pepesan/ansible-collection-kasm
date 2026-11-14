@@ -1,0 +1,45 @@
+---
+# Docker-published ports bypass many host INPUT-only firewalls. Filter both
+# forwarded traffic (DOCKER-USER) and docker-proxy traffic (INPUT).
+- name: Ensure systemd unit directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system
+    state: directory
+    mode: "0755"
+
+- name: Install manager database port restriction
+  ansible.builtin.copy:
+    src: restrict_db_port.sh
+    dest: /usr/local/sbin/kasm-restrict-db-port
+    mode: "0755"
+
+- name: Reapply database restriction when Docker starts
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/kasm-db-firewall.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Restrict public access to Kasm's local database
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/kasm-restrict-db-port {{ ansible_facts['default_ipv4']['interface'] }}
+
+      [Install]
+      WantedBy=docker.service
+
+- name: Enable database restriction at Docker startup
+  ansible.builtin.systemd_service:
+    name: kasm-db-firewall.service
+    enabled: true
+    daemon_reload: true
+
+- name: Apply database restriction without restarting Docker
+  ansible.builtin.command:
+    argv:
+      - /usr/local/sbin/kasm-restrict-db-port
+      - "{{ ansible_facts['default_ipv4']['interface'] }}"
+  register: kasm_manager_db_firewall_result
+  changed_when: "'CHANGED' in kasm_manager_db_firewall_result.stdout"
