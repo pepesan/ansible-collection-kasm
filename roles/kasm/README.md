@@ -56,7 +56,7 @@ and domains. Disabling `kasm_letsencrypt_enabled` skips the check.
 ## How the install is verified (and retried)
 
 `files/fix_and_install_kasm.sh` runs Kasm's `install.sh` inside the container.
-Two things about it are easy to get wrong and cost a lot of time to debug:
+Three things about it are easy to get wrong and cost a lot of time to debug:
 
 - **`install.sh` can abort early** with `dial unix .../kasmlogger.sock` or
   `.../kasmnetwork.sock: connect: connection refused`. Those are Kasm's own
@@ -72,6 +72,7 @@ Two things about it are easy to get wrong and cost a lot of time to debug:
   disabled plugin and runs `install.sh` again, up to 3 attempts, and only
   then exits with an error **without** writing the install marker
   (`/opt/kasm/data/opt/kasm_install_complete` on the host).
+- **Port conflicts are terminal when services are missing.** If `install.sh` reports `Port (N) is in use` and the required services are not already running, the wrapper preserves the diagnostic and fails without retrying; the existing service-state success check still applies.
 
 An earlier version wrote the marker regardless and its "wait until healthy"
 loop declared success when there were *no* containers at all (nothing is

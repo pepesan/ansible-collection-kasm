@@ -5,6 +5,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-15
+
+### Fixed
+- `fix_and_install_kasm.sh` no longer retries deterministic port conflicts when required services are missing; transient Docker plugin race retries remain.
+
 ## [0.2.0] - 2026-11-14
 
 ### Added
