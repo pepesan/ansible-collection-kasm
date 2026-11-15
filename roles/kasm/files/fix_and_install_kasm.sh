@@ -107,6 +107,15 @@ if [ -n "${KASM_RESTART_SYSTEMD_SERVICE:-}" ] && core_services_up; then
     touch "${MARKER_FILE}"
     exit 0
 fi
+# The installer output is already redacted before it is retained here. This
+# lets deterministic failures stop without exposing credentials or retries.
+INSTALL_OUTPUT_FILE=""
+cleanup_install_output() {
+  if [ -n "$INSTALL_OUTPUT_FILE" ]; then
+    rm -f "$INSTALL_OUTPUT_FILE"
+  fi
+}
+trap 'cleanup_install_output' EXIT
 
 # Installing the app removes KASM_INSTALL_BASE, including files still mounted
 # by the running database. Preserve those exact files outside that directory;
@@ -114,7 +123,7 @@ fi
 DB_DIR="${KASM_PRESERVE_DB_DIR:-}"
 if [ -n "$DB_DIR" ]; then
   DB_BACKUP=$(mktemp -d "${DB_DIR%/*}/.pepesan-db-preserve.XXXXXX")
-  trap 'rm -rf "$DB_BACKUP"' EXIT
+  trap 'rm -rf "$DB_BACKUP"; cleanup_install_output' EXIT
   for file in certs/db_server.crt certs/db_server.key conf/database/pg_hba.conf conf/database/postgresql.conf; do
     if [ ! -f "$DB_DIR/$file" ]; then
       echo "ERROR: database file $DB_DIR/$file missing; refusing to install app." >&2
@@ -142,15 +151,16 @@ restore_db_files() {
   chmod "$DB_LOG_MODE" "$DB_DIR/log/postgres"
 }
 if [ -n "$DB_DIR" ]; then
-  trap 'rm -rf "$DB_BACKUP"' EXIT
+  trap 'rm -rf "$DB_BACKUP"; cleanup_install_output' EXIT
 fi
 
 MAX_ATTEMPTS=3
 ATTEMPT=1
 while true; do
   if [ -n "$DB_DIR" ]; then
-    trap 'restore_db_files && rm -rf "$DB_BACKUP"' EXIT
+    trap 'restore_db_files && rm -rf "$DB_BACKUP"; cleanup_install_output' EXIT
   fi
+  INSTALL_OUTPUT_FILE=$(mktemp "${TMPDIR:-/tmp}/kasm-install-output.XXXXXX")
   echo -e "${YELLOW}>> Installing Kasm (attempt ${ATTEMPT}/${MAX_ATTEMPTS})...${NC}"
 # Kasm's installer prints generated credentials and tokens to stdout even in
 # non-interactive mode. Redact credential-like fields before they reach the
@@ -159,13 +169,22 @@ while true; do
   bash "${RELEASE_DIR}/install.sh" "${INSTALL_ARGS_ARRAY[@]}" 2>&1 |
     sed -u -E \
       -e 's/^([[:space:]]*[[:alnum:] _-]*(password|token|secret)[[:space:]]*[:=][[:space:]]*).*/\1[REDACTED]/I' \
-      -e 's/^(Setting Default Manager Token as ).*/\1[REDACTED]/I'
+      -e 's/^(Setting Default Manager Token as ).*/\1[REDACTED]/I' |
+    tee "$INSTALL_OUTPUT_FILE"
   INSTALL_EXIT=${PIPESTATUS[0]}
   set -e
   restore_db_files
   if [ -n "$DB_DIR" ]; then
-    trap 'rm -rf "$DB_BACKUP"' EXIT
+    trap 'rm -rf "$DB_BACKUP"; cleanup_install_output' EXIT
   fi
+  if [ "$INSTALL_EXIT" -ne 0 ] &&
+     grep -Eq 'Port \([0-9]+\) is in use\. Installation cannot continue\.' "$INSTALL_OUTPUT_FILE" &&
+     ! core_services_up; then
+    echo -e "${RED}ERROR: Kasm installer reported a port conflict; not retrying this deterministic error.${NC}"
+    exit "$INSTALL_EXIT"
+  fi
+  rm -f "$INSTALL_OUTPUT_FILE"
+  INSTALL_OUTPUT_FILE=""
   if [ "$INSTALL_EXIT" -eq 0 ] && [ -n "${KASM_RESTART_SYSTEMD_SERVICE:-}" ] &&
      systemctl is-active --quiet "${KASM_RESTART_SYSTEMD_SERVICE}"; then
     systemctl restart "${KASM_RESTART_SYSTEMD_SERVICE}"
