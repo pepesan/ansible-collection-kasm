@@ -16,6 +16,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - The existence check of `kasm_workspace` reused any workspace with the same image, whatever its name, so a wrong name went unnoticed and was never corrected. Name and image are now both checked.
 
+## [0.2.1] - 2026-11-15
+
+### Fixed
+- `fix_and_install_kasm.sh` no longer retries deterministic port conflicts when required services are missing; transient Docker plugin race retries remain.
+
 ## [0.2.0] - 2026-11-14
 
 ### Added
