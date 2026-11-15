@@ -57,7 +57,7 @@ los nodos y dominios fallidos. Si `kasm_letsencrypt_enabled` es falso, se omite.
 ## Cómo se verifica la instalación (y se reintenta)
 
 `files/fix_and_install_kasm.sh` ejecuta el `install.sh` de Kasm dentro del
-contenedor. Hay dos cosas fáciles de hacer mal y muy caras de depurar:
+contenedor. Hay tres aspectos fáciles de hacer mal y muy caros de depurar:
 
 - **`install.sh` puede abortar pronto** con `dial unix .../kasmlogger.sock` o
   `.../kasmnetwork.sock: connect: connection refused`. Son los plugins de
@@ -75,6 +75,7 @@ contenedor. Hay dos cosas fáciles de hacer mal y muy caras de depurar:
   ejecutar `install.sh`, hasta 3 intentos, y solo entonces sale con error
   **sin** escribir el marcador de instalación
   (`/opt/kasm/data/opt/kasm_install_complete` en el host).
+- **Los conflictos de puerto son definitivos si faltan servicios.** Si `install.sh` informa `Port (N) is in use` y los servicios requeridos no están ya en marcha, el wrapper conserva el diagnóstico y falla sin reintentar; se mantiene el criterio de éxito basado en servicios sanos.
 
 Una versión anterior escribía el marcador siempre, y su bucle de "esperar a
 que estén sanos" daba por bueno el caso de **no haber ningún contenedor**
