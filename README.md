@@ -243,6 +243,34 @@ output to a log with `tee` and follow it with `tail -f`.
 The usage guide covers common defaults, per-role variable references, and
 troubleshooting: [docs/usage.md](https://github.com/pepesan/ansible-collection-kasm/blob/main/docs/usage.md).
 
+## Persistent sessions
+
+A session keeps the user's files between sessions only when its workspace has a
+**persistent profile**. Kasm stores it on the host and mounts it as the user's home
+directory each time a session starts.
+
+- `examples/06_workspace_create.sh` creates the workspace with the profile
+  `/profiles/{username}/{image_id}` by default. Set `KASM_PROFILE_PATH` to another
+  template, or to an empty string for a workspace without persistence.
+- `kasm_session` sends `persistent_profile_mode` (default `Enabled`). On a workspace
+  without a profile the session starts without persistence, so the default is safe.
+- Files written in one session are found in the next one for the same user and
+  workspace (checked on Kasm 1.19.0, 2026-11-16).
+
+Limits to know before teaching with it:
+
+- **One session per user and workspace while the profile is in use.** Kasm refuses a
+  second session with "A persistent profile is currently in use". Use a workspace per
+  edition (for example "Course A" and "Course B") when a user needs two at once.
+- **Running programs do not survive a restart of the Kasm server.** The profile keeps
+  the files. The session itself is recovered only by the boot unit of `kasm_session`
+  (`kasm_session_recover_on_boot`), which is not verified yet on the all-in-one layout.
+- **The profile directory lives on the host where the session runs.** On a cluster the
+  path must exist on every agent. Deleting the workspace with
+  `kasm_workspace_delete_persistent_data=true` (the default) deletes the profile data.
+- **`kasm_workspace` sets the profile only when it creates the workspace.** Changing
+  the profile of an existing workspace is not supported yet.
+
 ## Cluster mode (manager + agents)
 
 Besides the all-in-one install, `pepesan.kasm.site_kasm_cluster` installs the official layout on several machines: a

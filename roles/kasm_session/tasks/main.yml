@@ -224,6 +224,7 @@
       api_key_secret: "{{ kasm_session_api_key_secret }}"
       user_id: "{{ kasm_session_user_id }}"
       image_id: "{{ kasm_session_image_id }}"
+      persistent_profile_mode: "{{ kasm_session_persistent_profile_mode }}"
     validate_certs: false
     status_code: 200
   register: kasm_session_request
