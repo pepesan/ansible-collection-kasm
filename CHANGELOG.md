@@ -5,6 +5,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-16
+
+### Added
+- Persistent sessions: `examples/06_workspace_create.sh` creates workspaces with the persistent profile `/profiles/{username}/{image_id}` (override with `KASM_PROFILE_PATH`). Documented in the README, "Persistent sessions".
+
+### Changed
+- `kasm_session` sends `persistent_profile_mode` with the launch request (default `Enabled`). Without it, Kasm does not mount the workspace profile into the session.
+
 ## [0.2.2] - 2026-11-16
 
 ### Changed
