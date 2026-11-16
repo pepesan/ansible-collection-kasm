@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-16
+
 ### Changed
 - `kasm_workspace` identifies a workspace by image **and** display name, so several workspaces can share one image (for example, different editions of a course).
   - Create: reuses the workspace only when both match; fails if the name is already used by another image; otherwise creates it.
