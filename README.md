@@ -263,8 +263,11 @@ Limits to know before teaching with it:
   second session with "A persistent profile is currently in use". Use a workspace per
   edition (for example "Course A" and "Course B") when a user needs two at once.
 - **Running programs do not survive a restart of the Kasm server.** The profile keeps
-  the files. The session itself is recovered only by the boot unit of `kasm_session`
-  (`kasm_session_recover_on_boot`), which is not verified yet on the all-in-one layout.
+  the files. With `kasm_session_recover_on_boot` enabled, the boot unit of `kasm_session`
+  starts the same session container again, so open programs are not restored. Verified on
+  the all-in-one layout (Kasm 1.19.0): after rebooting the server the same session came
+  back and the profile files were intact. Without the unit, a restart of the `kasm`
+  container leaves the session row as `running` with no container behind it.
 - **The profile directory lives on the host where the session runs.** On a cluster the
   path must exist on every agent. Deleting the workspace with
   `kasm_workspace_delete_persistent_data=true` (the default) deletes the profile data.
