@@ -6,7 +6,7 @@ Colección de Ansible para instalar y gestionar [Kasm Workspaces](https://kasmwe
 AlmaLinux y Rocky Linux: Docker, un usuario Linux, Kasm con un certificado real de Let's Encrypt, política de grupo,
 workspaces, usuarios, sesiones y desinstalación limpia. Cada paso es idempotente: ejecutarlo otra vez no cambia nada.
 
-> **Versión actual de Galaxy (0.2.2).** La evidencia E2E de plataformas corresponde a 0.1.0: pruebas sin TLS en servidores limpios Ubuntu 24.04/26.04, Debian 12/13,
+> **Versión actual de Galaxy (0.2.3).** La evidencia E2E de plataformas corresponde a 0.1.0: pruebas sin TLS en servidores limpios Ubuntu 24.04/26.04, Debian 12/13,
 > AlmaLinux 9/10 y Rocky Linux 9/10 con Kasm 1.19.0.
 > Es un proyecto independiente, sin relación con Kasm Technologies ni respaldado por ella.
 
