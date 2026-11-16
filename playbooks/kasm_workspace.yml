@@ -36,9 +36,6 @@
 
     - pepesan.kasm.kasm_workspace
 
-    # absent: delete the workspace registration (and any session using the
-    # image) first, then remove the now-unreferenced Docker image.
-    - role: pepesan.kasm.kasm_docker_image
-      vars:
-        kasm_docker_image_state: absent
-      when: kasm_workspace_state == "absent"
+    # absent: pepesan.kasm.kasm_workspace removes the workspace record and,
+    # only when no other workspace uses the same image, its Docker image.
+    # kasm_docker_image is not run here: its "rmi" ignores other workspaces.

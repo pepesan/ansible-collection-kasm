@@ -6,7 +6,7 @@ Ansible collection to install and manage [Kasm Workspaces](https://kasmweb.com/)
 servers: Docker, a Linux user, Kasm itself with a real Let's Encrypt certificate, group policy, workspaces, users, sessions and a
 clean uninstall. Every step is idempotent: running it again changes nothing.
 
-> **Current release (0.2.1).** Platform E2E evidence is from 0.1.0: no-TLS tests on clean Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 and
+> **Current release (0.2.2).** Platform E2E evidence is from 0.1.0: no-TLS tests on clean Ubuntu 24.04/26.04, Debian 12/13, AlmaLinux 9/10 and
 > Rocky Linux 9/10 with Kasm 1.19.0.
 > This is an independent project, not affiliated with or endorsed by Kasm Technologies.
 
