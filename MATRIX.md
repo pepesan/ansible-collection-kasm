@@ -60,9 +60,12 @@ Verified with the role from the 0.2.2 code:
 
 - Create a workspace with an image and a name: OK.
 - Rerun with the same image and name: reuses it, no new record, `changed=1` only for copying the script.
-- Same image under another name: fails with a clear error, no change.
 - Second workspace on the same image with another name: created; deleting it by name removes only that record and
   keeps the Docker image (another workspace uses it).
+- Re-run against the published 0.2.2 from Galaxy (installed in the test directory): reuse by name OK; a second
+  workspace on the same image with another name is created (several workspaces per image is the intended 0.2.2
+  behaviour, so this step must not fail); deleting one by name keeps the image; the record left over by an earlier
+  mistake in the test script was deleted.
 - Full create/delete cycle with the updated `absent` playbook: OK.
 
 Found and fixed during these tests: the `absent` path ran `kasm_docker_image`, whose `rmi` deleted the image from the
