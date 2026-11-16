@@ -263,9 +263,12 @@ Límites que conviene conocer antes de usarlo en clase:
   segunda con "A persistent profile is currently in use". Si un alumno necesita dos a la
   vez, usa un workspace por edición (por ejemplo "Curso A" y "Curso B").
 - **Los programas en ejecución no sobreviven a un reinicio del servidor Kasm.** El perfil
-  conserva los ficheros. La sesión solo se recupera con la unidad de arranque de
-  `kasm_session` (`kasm_session_recover_on_boot`), que aún no está verificada en el
-  modo todo-en-uno.
+  conserva los ficheros. Con `kasm_session_recover_on_boot` activado, la unidad de arranque
+  de `kasm_session` vuelve a arrancar el mismo contenedor de la sesión, así que los programas
+  abiertos no se restauran. Verificado en el modo todo-en-uno (Kasm 1.19.0): tras reiniciar el
+  servidor volvió la misma sesión y los ficheros del perfil estaban intactos. Sin la unidad,
+  un reinicio del contenedor `kasm` deja la sesión como `running` en la base de datos pero sin
+  contenedor.
 - **El directorio del perfil vive en el host donde corre la sesión.** En un clúster la
   ruta debe existir en cada agente. Borrar el workspace con
   `kasm_workspace_delete_persistent_data=true` (por defecto) borra los datos del perfil.
