@@ -3,6 +3,12 @@
 # optional so the same script can register another supported image.
 #
 # Usage: ./06_workspace_create.sh [inventory] [image] [workspace_name]
+#
+# The workspace keeps each user's files between sessions through a persistent
+# profile at /profiles/{username}/{image_id} (Kasm's own profile directory on the
+# host). Set KASM_PROFILE_PATH to another template, or to an empty string to
+# create a workspace without persistence. Only one session per user can use the
+# profile at a time; see the collection README, "Persistent sessions".
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,6 +37,8 @@ fi
 PRIVILEGED=false
 [[ "${IMAGE,,}" == *dind* ]] && PRIVILEGED=true
 NAME_JSON="$(jq -cn --arg name "${NAME}" '{kasm_workspace_name: $name}')"
+DEFAULT_PROFILE_PATH='/profiles/{username}/{image_id}'
+PROFILE_PATH="${KASM_PROFILE_PATH-$DEFAULT_PROFILE_PATH}"
 
 kasm_examples_init "${INVENTORY}"
 ansible-playbook -i "${KASM_INVENTORY_FOR_RUN}" pepesan.kasm.kasm_workspace \
@@ -40,4 +48,5 @@ ansible-playbook -i "${KASM_INVENTORY_FOR_RUN}" pepesan.kasm.kasm_workspace \
   -e "${NAME_JSON}" \
   -e "kasm_workspace_privileged=${PRIVILEGED}" \
   -e kasm_workspace_cores=2 \
-  -e kasm_workspace_memory_gb=4
+  -e kasm_workspace_memory_gb=4 \
+  -e "kasm_workspace_profile_path=${PROFILE_PATH}"
