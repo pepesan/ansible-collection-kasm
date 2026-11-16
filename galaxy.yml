@@ -1,7 +1,7 @@
 ---
 namespace: pepesan
 name: kasm
-version: 0.2.0
+version: 0.2.2
 readme: README.md
 authors:
   - David Vaquero <pepesan@gmail.com>
