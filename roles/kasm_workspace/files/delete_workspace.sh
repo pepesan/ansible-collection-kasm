@@ -40,22 +40,40 @@ PSQL() {
   ${KASM_DB_EXEC:-docker exec kasm docker exec kasm_db} psql -U kasmapp -d kasm "$@"
 }
 
+# Several workspaces may share one image (different editions). A workspace is
+# identified by image AND display name; the name is optional only when the
+# image has a single workspace.
 delete_one() {
   local IMAGE_NAME="$1"
+  local WORKSPACE_NAME="${2:-}"
   [[ "$IMAGE_NAME" != *:* ]] && IMAGE_NAME="${IMAGE_NAME}:latest"
 
   echo ""
   echo "======================================================================"
-  echo ">> Workspace: ${IMAGE_NAME}"
+  echo ">> Workspace: ${IMAGE_NAME}${WORKSPACE_NAME:+ (${WORKSPACE_NAME})}"
   echo "======================================================================"
 
   local IMAGE_ID
-  IMAGE_ID=$(PSQL -t -c "SELECT image_id FROM images WHERE name = '${IMAGE_NAME}';" | tr -d ' \n')
+  if [ -n "$WORKSPACE_NAME" ]; then
+    IMAGE_ID=$(PSQL -t -c "SELECT image_id FROM images WHERE name = '${IMAGE_NAME}' AND friendly_name = '${WORKSPACE_NAME}';" | tr -d ' \n')
+  else
+    local COUNT
+    COUNT=$(PSQL -t -c "SELECT count(*) FROM images WHERE name = '${IMAGE_NAME}';" | tr -d ' \n')
+    if [ "${COUNT:-0}" -gt 1 ]; then
+      echo "ERR ${COUNT} workspaces use image ${IMAGE_NAME}. Set KASM_WORKSPACE_NAME to choose one." >&2
+      exit 1
+    fi
+    IMAGE_ID=$(PSQL -t -c "SELECT image_id FROM images WHERE name = '${IMAGE_NAME}';" | tr -d ' \n')
+  fi
 
   if [ -z "$IMAGE_ID" ]; then
-    echo "OK No workspace with image ${IMAGE_NAME} exists. Nothing to delete."
+    echo "OK No workspace${WORKSPACE_NAME:+ named '${WORKSPACE_NAME}'} with image ${IMAGE_NAME} exists. Nothing to delete."
     return 0
   fi
+
+  # Other workspaces on the same image keep the Docker image and their sessions.
+  local OTHERS_SAME_IMAGE
+  OTHERS_SAME_IMAGE=$(PSQL -t -c "SELECT count(*) FROM images WHERE name = '${IMAGE_NAME}' AND image_id <> '${IMAGE_ID}';" | tr -d ' \n')
 
   local PERSISTENT_PROFILE_PATH
   PERSISTENT_PROFILE_PATH=$(PSQL -t -c \
@@ -72,7 +90,9 @@ delete_one() {
   echo ""
   echo ">> Checking for active sessions of this workspace..."
   local SESSION_CONTAINERS=""
-  if [ "$DIND_CLEANUP" = "true" ]; then
+  if [ "$DIND_CLEANUP" = "true" ] && [ "$OTHERS_SAME_IMAGE" != "0" ]; then
+    echo "   (another workspace uses image ${IMAGE_NAME}: its sessions are left running)"
+  elif [ "$DIND_CLEANUP" = "true" ]; then
     SESSION_CONTAINERS=$(docker exec kasm docker ps -q --filter "ancestor=${IMAGE_NAME}")
   else
     echo "   (KASM_DIND_CLEANUP=false: session containers live on the agents, not checked here)"
@@ -81,7 +101,7 @@ delete_one() {
     echo ">> Closing active session(s): $(echo "$SESSION_CONTAINERS" | tr '\n' ' ')"
     docker exec kasm docker rm -f $SESSION_CONTAINERS
     echo "OK Session(s) closed."
-  elif [ "$DIND_CLEANUP" = "true" ]; then
+  elif [ "$DIND_CLEANUP" = "true" ] && [ "$OTHERS_SAME_IMAGE" = "0" ]; then
     echo "OK No active sessions of this workspace."
   fi
   # Also clean up any "kasms" row still pointing at those already-removed
@@ -124,7 +144,7 @@ delete_one() {
   echo ""
   echo ">> Deleting the workspace record from the database..."
   PSQL -c "DELETE FROM images WHERE image_id = '${IMAGE_ID}';"
-  echo "OK Workspace '${IMAGE_NAME}' removed from Kasm's catalog."
+  echo "OK Workspace '${IMAGE_NAME}'${WORKSPACE_NAME:+ (${WORKSPACE_NAME})} removed from Kasm's catalog."
 
   if [ "$DELETE_PERSISTENT_DATA" = "true" ] && [ -n "$PERSISTED_DIRS" ]; then
     echo ""
@@ -141,7 +161,10 @@ delete_one() {
     echo "        To delete them too: -e kasm_delete_persistent_data=true"
   fi
 
-  if [ "$DIND_CLEANUP" = "true" ]; then
+  if [ "$DIND_CLEANUP" = "true" ] && [ "$OTHERS_SAME_IMAGE" != "0" ]; then
+    echo ""
+    echo "OK Docker image '${IMAGE_NAME}' kept: ${OTHERS_SAME_IMAGE} other workspace(s) use it."
+  elif [ "$DIND_CLEANUP" = "true" ]; then
     echo ""
     echo ">> Deleting Docker image '${IMAGE_NAME}' from Kasm's DinD to free up space..."
     if docker exec kasm docker rmi "${IMAGE_NAME}" 2>&1; then
@@ -155,20 +178,21 @@ delete_one() {
 
 if [ "$CLEAN_ALL" = "true" ]; then
   echo ">> KASM_CLEAN_ALL=true: ALL registered Kasm workspaces will be deleted."
-  ALL_IMAGES=$(PSQL -t -c "SELECT name FROM images;" | sed 's/^ *//;s/ *$//' | grep -v '^$' || true)
+  # One "image|workspace name" line per record: an image may appear several times.
+  ALL_IMAGES=$(PSQL -t -A -F'|' -c "SELECT name, friendly_name FROM images;" | sed 's/^ *//;s/ *$//' | grep -v '^$' || true)
   if [ -z "$ALL_IMAGES" ]; then
     echo "OK No workspace is registered. Nothing to delete."
   else
     echo "Workspaces found:"
     echo "$ALL_IMAGES" | sed 's/^/   - /'
-    while read -r img; do
+    while IFS='|' read -r img wsname; do
       [ -z "$img" ] && continue
-      delete_one "$img"
+      delete_one "$img" "$wsname"
     done <<< "$ALL_IMAGES"
   fi
 else
   IMAGE_NAME="${KASM_IMAGE:?ERR: KASM_IMAGE is required (e.g. user/image:1.0), or use KASM_CLEAN_ALL=true}"
-  delete_one "$IMAGE_NAME"
+  delete_one "$IMAGE_NAME" "${KASM_WORKSPACE_NAME:-}"
 fi
 
 echo ""
