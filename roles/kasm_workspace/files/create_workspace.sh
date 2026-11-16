@@ -151,9 +151,10 @@ autostart_session() {
 
   # Canonical (dashed) image_id straight from the DB, whichever form the API
   # returned it in.
-  IMAGE_ID=$(PSQL -t -c "SELECT image_id FROM images WHERE name = '${IMAGE_NAME}';" | tr -d ' \n')
+  # Match this workspace by image AND name: several workspaces may share an image.
+  IMAGE_ID=$(PSQL -t -c "SELECT image_id FROM images WHERE name = '${IMAGE_NAME}' AND friendly_name = '${WORKSPACE_NAME}';" | tr -d ' \n')
   if [ -z "$IMAGE_ID" ]; then
-    echo "WARNING Autostart: image '${IMAGE_NAME}' is not registered. No session launched." >&2
+    echo "WARNING Autostart: workspace '${WORKSPACE_NAME}' (image '${IMAGE_NAME}') is not registered. No session launched." >&2
     return 0
   fi
 
@@ -253,10 +254,11 @@ API_KEY_SECRET=$(python3 -c "import json; print(json.load(open('${API_KEY_FILE}'
 # SQL query — get_images has no server-side name filter documented, so the
 # match is done client-side in Python over the full list.
 echo ">> Checking whether the workspace already exists..."
-# Both keys are checked: the image reference (Kasm's `name`) and the workspace
-# display name (`friendly_name`). Reuse only when both point to the same record.
-# Any other combination is an error: silently reusing a workspace registered
-# under a different name hid a wrong name in earlier runs.
+# A workspace is identified by image AND display name (`friendly_name`): several
+# workspaces may share one image (different editions of a course). Rules:
+#   - same image and same name  -> reuse it (idempotent re-run)
+#   - same name, other image    -> error: the name is already taken
+#   - otherwise                 -> create a new workspace
 MATCHES=$(curl -sk -X POST "${KASM_URL}/api/public/get_images" \
   -H "Content-Type: application/json" \
   -d "{\"api_key\": \"${API_KEY}\", \"api_key_secret\": \"${API_KEY_SECRET}\"}" \
@@ -265,32 +267,28 @@ import sys, json, os
 data = json.load(sys.stdin)
 target_image = os.environ["IMAGE_NAME"]
 target_name = os.environ["WORKSPACE_NAME"]
-by_image = next((i for i in data.get("images", []) if i.get("name") == target_image), None)
-by_name = next((i for i in data.get("images", []) if i.get("friendly_name") == target_name), None)
+images = data.get("images", [])
+both = next((i for i in images if i.get("name") == target_image and i.get("friendly_name") == target_name), None)
+by_name = next((i for i in images if i.get("friendly_name") == target_name), None)
 print("\t".join([
-    by_image["image_id"] if by_image else "",
+    both["image_id"] if both else "",
     by_name["image_id"] if by_name else "",
     by_name["name"] if by_name else "",
 ]))
 ')
-IMAGE_MATCH_ID=$(printf '%s' "$MATCHES" | cut -f1)
+SAME_ID=$(printf '%s' "$MATCHES" | cut -f1)
 NAME_MATCH_ID=$(printf '%s' "$MATCHES" | cut -f2)
 NAME_MATCH_IMAGE=$(printf '%s' "$MATCHES" | cut -f3)
 
-if [ -n "$IMAGE_MATCH_ID" ] && [ "$IMAGE_MATCH_ID" = "$NAME_MATCH_ID" ]; then
+if [ -n "$SAME_ID" ]; then
   echo "OK Workspace '${WORKSPACE_NAME}' with image ${IMAGE_NAME} is already configured. Skipping creation."
-  configure_staging "$IMAGE_MATCH_ID"
+  configure_staging "$SAME_ID"
   autostart_session
   exit 0
 fi
 
-if [ -n "$IMAGE_MATCH_ID" ]; then
-  echo "ERR Image ${IMAGE_NAME} is already registered under a different workspace name. Refusing to reuse it as '${WORKSPACE_NAME}'; rename or remove it first." >&2
-  exit 1
-fi
-
 if [ -n "$NAME_MATCH_ID" ]; then
-  echo "ERR A workspace named '${WORKSPACE_NAME}' already exists with image ${NAME_MATCH_IMAGE}. Refusing to create a second one for ${IMAGE_NAME}; rename or remove it first." >&2
+  echo "ERR A workspace named '${WORKSPACE_NAME}' already exists with image ${NAME_MATCH_IMAGE}. Refusing to create another one named the same for ${IMAGE_NAME}; use a different name." >&2
   exit 1
 fi
 

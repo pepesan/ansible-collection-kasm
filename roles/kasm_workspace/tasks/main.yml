@@ -111,6 +111,7 @@
       ansible.builtin.command: bash {{ kasm_dir }}/delete_workspace.sh
       environment:
         KASM_IMAGE: "{{ kasm_workspace_image }}"
+        KASM_WORKSPACE_NAME: "{{ kasm_workspace_name | default('') }}"
         KASM_DB_EXEC: "{{ kasm_db_exec }}"
         KASM_DIND_CLEANUP: "{{ kasm_workspace_dind_cleanup | lower }}"
         KASM_CLEAN_ALL: "{{ kasm_workspace_clean_all | lower }}"
