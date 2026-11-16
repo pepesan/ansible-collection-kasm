@@ -253,24 +253,45 @@ API_KEY_SECRET=$(python3 -c "import json; print(json.load(open('${API_KEY_FILE}'
 # SQL query — get_images has no server-side name filter documented, so the
 # match is done client-side in Python over the full list.
 echo ">> Checking whether the workspace already exists..."
-EXISTING_IMAGE_ID=$(curl -sk -X POST "${KASM_URL}/api/public/get_images" \
+# Both keys are checked: the image reference (Kasm's `name`) and the workspace
+# display name (`friendly_name`). Reuse only when both point to the same record.
+# Any other combination is an error: silently reusing a workspace registered
+# under a different name hid a wrong name in earlier runs.
+MATCHES=$(curl -sk -X POST "${KASM_URL}/api/public/get_images" \
   -H "Content-Type: application/json" \
   -d "{\"api_key\": \"${API_KEY}\", \"api_key_secret\": \"${API_KEY_SECRET}\"}" \
-  | IMAGE_NAME="${IMAGE_NAME}" python3 -c '
+  | IMAGE_NAME="${IMAGE_NAME}" WORKSPACE_NAME="${WORKSPACE_NAME}" python3 -c '
 import sys, json, os
 data = json.load(sys.stdin)
-target = os.environ["IMAGE_NAME"]
-for image in data.get("images", []):
-    if image.get("name") == target:
-        print(image["image_id"])
-        break
+target_image = os.environ["IMAGE_NAME"]
+target_name = os.environ["WORKSPACE_NAME"]
+by_image = next((i for i in data.get("images", []) if i.get("name") == target_image), None)
+by_name = next((i for i in data.get("images", []) if i.get("friendly_name") == target_name), None)
+print("\t".join([
+    by_image["image_id"] if by_image else "",
+    by_name["image_id"] if by_name else "",
+    by_name["name"] if by_name else "",
+]))
 ')
+IMAGE_MATCH_ID=$(printf '%s' "$MATCHES" | cut -f1)
+NAME_MATCH_ID=$(printf '%s' "$MATCHES" | cut -f2)
+NAME_MATCH_IMAGE=$(printf '%s' "$MATCHES" | cut -f3)
 
-if [ -n "$EXISTING_IMAGE_ID" ]; then
-  echo "OK Workspace with image ${IMAGE_NAME} is already configured. Skipping creation."
-  configure_staging "$EXISTING_IMAGE_ID"
+if [ -n "$IMAGE_MATCH_ID" ] && [ "$IMAGE_MATCH_ID" = "$NAME_MATCH_ID" ]; then
+  echo "OK Workspace '${WORKSPACE_NAME}' with image ${IMAGE_NAME} is already configured. Skipping creation."
+  configure_staging "$IMAGE_MATCH_ID"
   autostart_session
   exit 0
+fi
+
+if [ -n "$IMAGE_MATCH_ID" ]; then
+  echo "ERR Image ${IMAGE_NAME} is already registered under a different workspace name. Refusing to reuse it as '${WORKSPACE_NAME}'; rename or remove it first." >&2
+  exit 1
+fi
+
+if [ -n "$NAME_MATCH_ID" ]; then
+  echo "ERR A workspace named '${WORKSPACE_NAME}' already exists with image ${NAME_MATCH_IMAGE}. Refusing to create a second one for ${IMAGE_NAME}; rename or remove it first." >&2
+  exit 1
 fi
 
 echo ">> Creating workspace '${WORKSPACE_NAME}' (image ${IMAGE_NAME}, cores=${CORES}, memory=${MEMORY_GB}GB, privileged=${PRIVILEGED})..."
