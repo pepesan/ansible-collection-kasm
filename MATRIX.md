@@ -50,3 +50,26 @@ A second reboot verified automatic recovery: systemd completed successfully, the
 ## Real-server E2E: Rocky Linux 10 + TLS — session recovery verified
 
 The server remains available with TLS. One existing session was retained; no replacement session was created. Real server addresses and credentials are excluded from this matrix.
+
+## Real-server E2E: kasm_workspace (0.2.2)
+
+Test server: Kasm 1.19.0 in single-image layout (`kasm` container with `kasm_db` inside), one workspace image of 3.6 GB
+pulled from Docker Hub. Real server addresses are excluded from this matrix.
+
+Verified with the role from the 0.2.2 code:
+
+- Create a workspace with an image and a name: OK.
+- Rerun with the same image and name: reuses it, no new record, `changed=1` only for copying the script.
+- Second workspace on the same image with another name: created; deleting it by name removes only that record and
+  keeps the Docker image (another workspace uses it).
+- Re-run against the published 0.2.2 from Galaxy (installed in the test directory): reuse by name OK; a second
+  workspace on the same image with another name is created (several workspaces per image is the intended 0.2.2
+  behaviour, so this step must not fail); deleting one by name keeps the image; the record left over by an earlier
+  mistake in the test script was deleted.
+- Full create/delete cycle with the updated `absent` playbook: OK.
+
+Found and fixed during these tests: the `absent` path ran `kasm_docker_image`, whose `rmi` deleted the image from the
+DinD cache even when another workspace used it. Removed from the playbook in 0.2.2.
+
+Not verified: a session started from a second workspace on the same image (autostart and real session), a name already
+used by a different image (checked only by reading the code), and opening repositories inside a session.
