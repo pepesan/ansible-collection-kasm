@@ -5,6 +5,24 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-16
+
+### Changed
+- `kasm_workspace` identifies a workspace by image **and** display name, so several workspaces can share one image (for example, different editions of a course).
+  - Create: reuses the workspace only when both match; fails if the name is already used by another image; otherwise creates it.
+  - Autostart: looks up the workspace by image and name.
+  - Delete: removes one workspace selected by `kasm_workspace_name`. It fails when several workspaces share the image and no name is given. The Docker image in the DinD cache and the running sessions are removed only when no other workspace uses that image.
+  - `kasm_workspace_clean_all` walks image/name pairs.
+- The `absent` path of `playbooks/kasm_workspace.yml` no longer runs `kasm_docker_image`: its `rmi` ignored other workspaces that use the same image.
+
+### Fixed
+- The existence check of `kasm_workspace` reused any workspace with the same image, whatever its name, so a wrong name went unnoticed and was never corrected. Name and image are now both checked.
+
+## [0.2.1] - 2026-11-15
+
+### Fixed
+- `fix_and_install_kasm.sh` no longer retries deterministic port conflicts when required services are missing; transient Docker plugin race retries remain.
+
 ## [0.2.0] - 2026-11-14
 
 ### Added
