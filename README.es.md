@@ -243,6 +243,35 @@ La guía de uso reúne los valores por defecto más comunes, las referencias de
 variables de cada rol y la tabla de problemas habituales:
 [docs/usage.es.md](docs/usage.es.md).
 
+## Sesiones persistentes
+
+Una sesión conserva los ficheros del usuario entre sesiones solo si su workspace tiene
+un **perfil persistente**. Kasm lo guarda en el host y lo monta como carpeta personal
+del usuario cada vez que arranca una sesión.
+
+- `examples/06_workspace_create.sh` crea el workspace con el perfil
+  `/profiles/{username}/{image_id}` por defecto. Define `KASM_PROFILE_PATH` con otra
+  plantilla, o con una cadena vacía para un workspace sin persistencia.
+- `kasm_session` envía `persistent_profile_mode` (por defecto `Enabled`). En un workspace
+  sin perfil la sesión arranca sin persistencia, así que el valor por defecto es seguro.
+- Los ficheros escritos en una sesión aparecen en la siguiente del mismo usuario y
+  workspace (comprobado en Kasm 1.19.0, 2026-11-16).
+
+Límites que conviene conocer antes de usarlo en clase:
+
+- **Una sesión por usuario y workspace mientras el perfil está en uso.** Kasm rechaza una
+  segunda con "A persistent profile is currently in use". Si un alumno necesita dos a la
+  vez, usa un workspace por edición (por ejemplo "Curso A" y "Curso B").
+- **Los programas en ejecución no sobreviven a un reinicio del servidor Kasm.** El perfil
+  conserva los ficheros. La sesión solo se recupera con la unidad de arranque de
+  `kasm_session` (`kasm_session_recover_on_boot`), que aún no está verificada en el
+  modo todo-en-uno.
+- **El directorio del perfil vive en el host donde corre la sesión.** En un clúster la
+  ruta debe existir en cada agente. Borrar el workspace con
+  `kasm_workspace_delete_persistent_data=true` (por defecto) borra los datos del perfil.
+- **`kasm_workspace` fija el perfil solo al crear el workspace.** Cambiar el perfil de
+  un workspace existente todavía no está soportado.
+
 ## Modo clúster (manager + agentes)
 
 Además del todo-en-uno, `pepesan.kasm.site_kasm_cluster` instala el layout oficial en varias máquinas: un manager (rol

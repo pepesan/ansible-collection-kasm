@@ -35,6 +35,10 @@ kasm_session_recover_stopped: false
 # Install a systemd one-shot that starts this same container after a host reboot.
 # The unit waits for the host Docker daemon and Kasm's nested Docker daemon.
 kasm_session_recover_on_boot: true
+# Persistent profile mode sent with the launch request. "Enabled" mounts the
+# workspace's persistent profile (kasm_workspace_profile_path) into the session,
+# so files survive the session. Only one session per user can use a profile.
+kasm_session_persistent_profile_mode: "Enabled"
 
 # Host paths owned by this role for boot-time session recovery.
 kasm_session_recover_script: /usr/local/sbin/pepesan-kasm-session-recover
